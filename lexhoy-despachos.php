@@ -16,6 +16,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Log de prueba directo
+error_log('=== PRUEBA DE LOG DIRECTO ===');
+error_log('Plugin Lexhoy Despachos iniciado');
+error_log('Ruta del plugin: ' . __FILE__);
+error_log('Ruta del debug.log: C:/Users/blanc/Local Sites/lexhoy/app/public/debug.log');
+
 // Verificar que WordPress está cargado
 if (!function_exists('add_action')) {
     exit;
@@ -189,6 +195,9 @@ class LexhoyDespachos {
             
             // Manejar la visualización de despachos
             add_action('template_redirect', array($this, 'handle_despacho_template'));
+
+            // Crear la página de búsqueda si no existe
+            add_action('init', array($this, 'create_search_page'));
         } catch (Exception $e) {
             error_log('Lexhoy Despachos Error: ' . $e->getMessage());
         }
@@ -888,6 +897,8 @@ class LexhoyDespachos {
     }
 
     public function register_despacho_post_type() {
+        error_log('Lexhoy Despachos - Registrando Custom Post Type');
+        
         $labels = array(
             'name'               => 'Despachos',
             'singular_name'      => 'Despacho',
@@ -906,95 +917,258 @@ class LexhoyDespachos {
             'labels'              => $labels,
             'public'              => true,
             'publicly_queryable'  => true,
-            'show_ui'             => false, // Ocultamos la UI de WordPress ya que usamos nuestra propia
+            'show_ui'             => false,
             'show_in_menu'        => false,
             'query_var'           => true,
-            'rewrite'             => array('slug' => 'despacho'),
+            'rewrite'             => array(
+                'slug' => '',
+                'with_front' => false,
+                'pages' => true,
+                'feeds' => false
+            ),
             'capability_type'     => 'post',
-            'has_archive'         => true,
+            'has_archive'         => false,
             'hierarchical'        => false,
             'menu_position'       => null,
             'supports'            => array('title', 'editor', 'thumbnail')
         );
 
         register_post_type('despacho', $args);
+        error_log('Lexhoy Despachos - Custom Post Type registrado');
     }
 
     public function add_rewrite_rules() {
-        // Regla para URLs limpias, pero excluyendo la página de búsqueda
+        error_log('Lexhoy Despachos - Añadiendo reglas de reescritura');
+        
+        // Regla específica para Sorriba (debe ir primero)
         add_rewrite_rule(
-            '^(?!buscador-de-despachos)([a-z0-9-]+)/?$',
-            'index.php?despacho_slug=$matches[1]',
+            '^sorribasasociados/?$',
+            'index.php?post_type=despacho&name=sorribasasociados',
             'top'
         );
+
+        // Regla para la página de búsqueda
+        add_rewrite_rule(
+            '^buscador-de-despachos/?$',
+            'index.php?pagename=buscador-de-despachos',
+            'top'
+        );
+
+        // Regla general para otros despachos (debe ir al final)
+        add_rewrite_rule(
+            '^([^/]+)/?$',
+            'index.php?post_type=despacho&name=$matches[1]',
+            'top'
+        );
+
+        // Añadir query vars personalizados
         add_rewrite_tag('%despacho_slug%', '([^&]+)');
 
         // Limpiar las reglas de reescritura
         flush_rewrite_rules();
+        
+        error_log('Lexhoy Despachos - Reglas de reescritura añadidas');
     }
 
     public function handle_despacho_template() {
         global $wp_query;
+        
+        // Obtener el slug de la URL actual
+        $current_url = $_SERVER['REQUEST_URI'];
+        $slug = trim($current_url, '/');
 
-        // Verificar si estamos en una página de despacho usando el query var personalizado
-        $despacho_slug = get_query_var('despacho_slug');
-        if (!empty($despacho_slug)) {
-            // Obtener los datos de Algolia
-            $settings = get_option('lexhoy_despachos_settings');
-            if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
-                wp_die('Error: Por favor, configure las credenciales de Algolia en la página de configuración.');
+        // No procesar si estamos en la página del buscador
+        if ($slug === 'buscador-de-despachos') {
+            return;
+        }
+
+        // Obtener los datos de Algolia
+        $settings = get_option('lexhoy_despachos_settings');
+        
+        if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
+            wp_die('Error: Por favor, configure las credenciales de Algolia en la página de configuración.');
+        }
+
+        try {
+            // Incluir el autoloader de Composer
+            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
+            if (!file_exists($autoloader)) {
+                wp_die('Error: No se encontró el autoloader de Composer.');
+            }
+            require_once $autoloader;
+
+            // Crear el cliente de Algolia
+            $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
+                $settings['algolia_app_id'],
+                $settings['algolia_admin_api_key']
+            );
+            
+            // Buscar el despacho por nombre (más flexible que por slug)
+            $results = $client->searchSingleIndex('lexhoy_despachos_formatted', [
+                'query' => $slug,
+                'hitsPerPage' => 1
+            ]);
+
+            if (empty($results['hits'])) {
+                $wp_query->set_404();
+                status_header(404);
+                return;
             }
 
-            try {
-                // Incluir el autoloader de Composer
-                $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-                if (!file_exists($autoloader)) {
-                    wp_die('Error: No se encontró el autoloader de Composer.');
-                }
-                require_once $autoloader;
+            $despacho = $results['hits'][0];
 
-                // Crear el cliente de Algolia
-                $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
-                    $settings['algolia_app_id'],
-                    $settings['algolia_admin_api_key']
-                );
+            // Mostrar los datos
+            ?>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title><?php echo esc_html($despacho['nombre']); ?></title>
+                <script>
+                    // Mostrar los datos en la consola para depuración
+                    console.log('=== DATOS DEL DESPACHO ===');
+                    console.log('URL:', '<?php echo $current_url; ?>');
+                    console.log('Slug:', '<?php echo $slug; ?>');
+                    console.log('Datos:', <?php echo json_encode($despacho, JSON_PRETTY_PRINT); ?>);
+                </script>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        margin: 0;
+                        padding: 20px;
+                        background: #f5f5f5;
+                    }
+                    .despacho-container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        background: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    h1 {
+                        color: #333;
+                        margin-bottom: 30px;
+                        padding-bottom: 15px;
+                        border-bottom: 2px solid #eee;
+                    }
+                    .despacho-info {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                        gap: 20px;
+                    }
+                    .info-section {
+                        margin-bottom: 20px;
+                    }
+                    .info-section h2 {
+                        color: #666;
+                        font-size: 1.2em;
+                        margin-bottom: 10px;
+                    }
+                    .info-item {
+                        margin-bottom: 10px;
+                    }
+                    .info-item strong {
+                        color: #444;
+                        display: block;
+                        margin-bottom: 5px;
+                    }
+                    .info-item a {
+                        color: #0073aa;
+                        text-decoration: none;
+                    }
+                    .info-item a:hover {
+                        text-decoration: underline;
+                    }
+                    .descripcion {
+                        grid-column: 1 / -1;
+                        margin-top: 20px;
+                    }
+                    .descripcion p {
+                        color: #666;
+                        line-height: 1.8;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="despacho-container">
+                    <h1><?php echo esc_html($despacho['nombre']); ?></h1>
+                    
+                    <div class="despacho-info">
+                        <?php if (!empty($despacho['direccion'])): ?>
+                            <div class="info-section">
+                                <h2>Información de Contacto</h2>
+                                <div class="info-item">
+                                    <strong>Dirección:</strong>
+                                    <?php echo esc_html($despacho['direccion']); ?>
+                                    <?php if (!empty($despacho['localidad'])): ?>
+                                        <br><?php echo esc_html($despacho['localidad']); ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($despacho['provincia'])): ?>
+                                        <br><?php echo esc_html($despacho['provincia']); ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($despacho['codigo_postal'])): ?>
+                                        <br><?php echo esc_html($despacho['codigo_postal']); ?>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <?php if (!empty($despacho['telefono'])): ?>
+                                    <div class="info-item">
+                                        <strong>Teléfono:</strong>
+                                        <a href="tel:<?php echo esc_attr($despacho['telefono']); ?>">
+                                            <?php echo esc_html($despacho['telefono']); ?>
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($despacho['email'])): ?>
+                                    <div class="info-item">
+                                        <strong>Email:</strong>
+                                        <a href="mailto:<?php echo esc_attr($despacho['email']); ?>">
+                                            <?php echo esc_html($despacho['email']); ?>
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($despacho['web'])): ?>
+                                    <div class="info-item">
+                                        <strong>Web:</strong>
+                                        <a href="<?php echo esc_url($despacho['web']); ?>" target="_blank">
+                                            <?php echo esc_html($despacho['web']); ?>
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
 
-                // Buscar el despacho por slug
-                $results = $client->searchSingleIndex('lexhoy_despachos_formatted', [
-                    'filters' => 'slug:' . $despacho_slug,
-                    'hitsPerPage' => 1
-                ]);
+                        <?php if (!empty($despacho['areas_practica'])): ?>
+                            <div class="info-section">
+                                <h2>Áreas de Práctica</h2>
+                                <div class="info-item">
+                                    <?php foreach ($despacho['areas_practica'] as $area): ?>
+                                        <span style="display: inline-block; background: #f0f0f0; padding: 5px 10px; margin: 2px; border-radius: 3px;">
+                                            <?php echo esc_html($area); ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
-                if (empty($results['hits'])) {
-                    // Si no encontramos el despacho, dejamos que WordPress maneje la 404
-                    return;
-                }
+                        <?php if (!empty($despacho['descripcion'])): ?>
+                            <div class="info-section descripcion">
+                                <h2>Descripción</h2>
+                                <?php echo wpautop(esc_html($despacho['descripcion'])); ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </body>
+            </html>
+            <?php
+            exit;
 
-                $despacho = $results['hits'][0];
-
-                // Establecer el título de la página
-                add_filter('document_title_parts', function($title) use ($despacho) {
-                    $title['title'] = $despacho['nombre'];
-                    return $title;
-                });
-
-                // Establecer el estado de la consulta
-                $wp_query->is_single = true;
-                $wp_query->is_singular = true;
-                $wp_query->is_404 = false;
-
-                // Cargar la plantilla del despacho
-                $template_path = LEXHOY_DESPACHOS_PLUGIN_DIR . '/templates/despacho-single.php';
-                if (file_exists($template_path)) {
-                    include $template_path;
-                    exit;
-                } else {
-                    wp_die('Error: No se encontró la plantilla del despacho.');
-                }
-
-            } catch (Exception $e) {
-                wp_die('Error al obtener los datos del despacho: ' . $e->getMessage());
-            }
+        } catch (Exception $e) {
+            wp_die('Error al obtener los datos del despacho: ' . $e->getMessage());
         }
     }
 
@@ -1095,6 +1269,29 @@ class LexhoyDespachos {
         } catch (Exception $e) {
             error_log('Error al verificar slugs: ' . $e->getMessage());
             return false;
+        }
+    }
+
+    public function create_search_page() {
+        // Verificar si la página ya existe
+        $search_page = get_page_by_path('buscador-de-despachos');
+        
+        if (!$search_page) {
+            // Crear la página
+            $page_data = array(
+                'post_title'    => 'Buscador de Despachos',
+                'post_name'     => 'buscador-de-despachos',
+                'post_status'   => 'publish',
+                'post_type'     => 'page',
+                'post_content'  => '[lexhoy_despachos_search]',
+                'post_author'   => 1
+            );
+            
+            $page_id = wp_insert_post($page_data);
+            
+            if (is_wp_error($page_id)) {
+                error_log('Error al crear la página de búsqueda: ' . $page_id->get_error_message());
+            }
         }
     }
 }

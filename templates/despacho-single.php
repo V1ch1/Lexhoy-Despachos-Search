@@ -7,6 +7,9 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+// Debug: Mostrar los datos del despacho
+error_log('Lexhoy Despachos - Datos en la plantilla: ' . print_r($despacho, true));
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -19,11 +22,15 @@ if (!defined('ABSPATH')) {
     <?php get_header(); ?>
 
     <div class="despacho-single">
+        <pre style="background: #f5f5f5; padding: 20px; margin: 20px; border-radius: 5px;">
+            <?php print_r($despacho); ?>
+        </pre>
+
         <div class="despacho-header">
-            <h1><?php echo esc_html($despacho['nombre']); ?></h1>
+            <h1><?php echo esc_html($despacho['nombre'] ?? 'Sin nombre'); ?></h1>
             <div class="despacho-meta">
-                <p><strong>Localidad:</strong> <?php echo esc_html($despacho['localidad']); ?></p>
-                <p><strong>Provincia:</strong> <?php echo esc_html($despacho['provincia']); ?></p>
+                <p><strong>Localidad:</strong> <?php echo esc_html($despacho['localidad'] ?? 'No especificada'); ?></p>
+                <p><strong>Provincia:</strong> <?php echo esc_html($despacho['provincia'] ?? 'No especificada'); ?></p>
             </div>
         </div>
 
