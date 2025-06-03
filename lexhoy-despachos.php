@@ -8,6 +8,7 @@
  * Author URI: https://blancoyenbatea.com
  * Text Domain: lexhoy-despachos-search
  * Domain Path: /languages
+ * Update URI: https://github.com/V1ch1/Lexhoy-Despachos-Search
  */
 
 // Evitar acceso directo
@@ -30,6 +31,114 @@ define('LEXHOY_DESPACHOS_VERSION', '2.2.0');
 define('LEXHOY_DESPACHOS_PLUGIN_DIR', dirname(__FILE__));
 define('LEXHOY_DESPACHOS_PLUGIN_URL', plugins_url('', __FILE__));
 define('LEXHOY_DESPACHOS_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('LEXHOY_DESPACHOS_GITHUB_REPO', 'V1ch1/Lexhoy-Despachos-Search');
+
+// Clase para manejar las actualizaciones
+class LexhoyDespachosUpdater {
+    private $file;
+    private $plugin;
+    private $basename;
+    private $active;
+    private $github_response;
+    private $access_token;
+
+    public function __construct($file) {
+        $this->file = $file;
+        $this->plugin = plugin_basename($file);
+        $this->basename = plugin_basename($file);
+        $this->active = is_plugin_active($this->basename);
+    }
+
+    public function init() {
+        add_filter('pre_set_site_transient_update_plugins', array($this, 'modify_transient'), 10, 1);
+        add_filter('plugins_api', array($this, 'plugin_popup'), 10, 3);
+        add_filter('upgrader_post_install', array($this, 'after_install'), 10, 3);
+    }
+
+    public function modify_transient($transient) {
+        if (!$transient) return $transient;
+
+        // Obtener la última versión de GitHub
+        $response = wp_remote_get('https://api.github.com/repos/' . LEXHOY_DESPACHOS_GITHUB_REPO . '/releases/latest');
+        
+        if (is_wp_error($response)) {
+            return $transient;
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response));
+        
+        if (!$data) {
+            return $transient;
+        }
+
+        // Comparar versiones
+        if (version_compare(LEXHOY_DESPACHOS_VERSION, $data->tag_name, '<')) {
+            $plugin_data = get_plugin_data($this->file);
+            
+            $transient->response[$this->basename] = (object) array(
+                'slug' => dirname($this->basename),
+                'new_version' => $data->tag_name,
+                'url' => $data->html_url,
+                'package' => $data->zipball_url,
+                'requires' => $plugin_data['RequiresWP'],
+                'tested' => $plugin_data['TestedUpTo'],
+                'readme' => $data->body
+            );
+        }
+
+        return $transient;
+    }
+
+    public function plugin_popup($result, $action, $args) {
+        if ($action !== 'plugin_information') return $result;
+        if (!isset($args->slug) || $args->slug !== dirname($this->basename)) return $result;
+
+        // Obtener información del plugin desde GitHub
+        $response = wp_remote_get('https://api.github.com/repos/' . LEXHOY_DESPACHOS_GITHUB_REPO . '/releases/latest');
+        
+        if (is_wp_error($response)) {
+            return $result;
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response));
+        
+        if (!$data) {
+            return $result;
+        }
+
+        $plugin_data = get_plugin_data($this->file);
+
+        return (object) array(
+            'name' => $plugin_data['Name'],
+            'slug' => dirname($this->basename),
+            'version' => $data->tag_name,
+            'author' => $plugin_data['Author'],
+            'author_profile' => $plugin_data['AuthorURI'],
+            'last_updated' => $data->published_at,
+            'homepage' => $plugin_data['PluginURI'],
+            'short_description' => $plugin_data['Description'],
+            'sections' => array(
+                'description' => $data->body,
+                'changelog' => $data->body
+            ),
+            'download_link' => $data->zipball_url
+        );
+    }
+
+    public function after_install($response, $hook_extra, $result) {
+        global $wp_filesystem;
+
+        $install_directory = plugin_dir_path($this->file);
+        $wp_filesystem->move($result['destination'], $install_directory);
+        $result['destination'] = $install_directory;
+
+        if ($this->active) {
+            activate_plugin($this->basename);
+        }
+
+        return $result;
+    }
+}
 
 // Clase principal del plugin
 class LexhoyDespachos {
@@ -979,9 +1088,50 @@ function lexhoy_despachos_init() {
     }
 }
 
+// Función para ejecutar composer install
+function lexhoy_despachos_activate() {
+    try {
+        $plugin_dir = dirname(__FILE__);
+        $composer_path = $plugin_dir . '/vendor/autoload.php';
+        
+        // Si no existe el autoloader, ejecutar composer install
+        if (!file_exists($composer_path)) {
+            // Verificar si composer está instalado
+            exec('composer --version', $output, $return_var);
+            
+            if ($return_var === 0) {
+                // Ejecutar composer install
+                $command = 'cd ' . escapeshellarg($plugin_dir) . ' && composer install --no-dev --optimize-autoloader';
+                exec($command, $output, $return_var);
+                
+                if ($return_var !== 0) {
+                    error_log('Error al ejecutar composer install: ' . implode("\n", $output));
+                    wp_die('Error al instalar las dependencias del plugin. Por favor, ejecuta manualmente "composer install" en la carpeta del plugin.');
+                }
+            } else {
+                error_log('Composer no está instalado en el servidor');
+                wp_die('Composer no está instalado en el servidor. Por favor, instala Composer y ejecuta "composer install" en la carpeta del plugin.');
+            }
+        }
+    } catch (Exception $e) {
+        error_log('Error en la activación del plugin: ' . $e->getMessage());
+        wp_die('Error al activar el plugin: ' . $e->getMessage());
+    }
+}
+
+// Registrar la función de activación
+register_activation_hook(__FILE__, 'lexhoy_despachos_activate');
+
 add_action('plugins_loaded', 'lexhoy_despachos_init');
 
 // Función para mostrar la página de áreas de práctica
 function lexhoy_areas_practica_page() {
     require_once plugin_dir_path(__FILE__) . 'admin/areas-practica.php';
-} 
+}
+
+// Inicializar el sistema de actualizaciones
+function lexhoy_despachos_updater_init() {
+    $updater = new LexhoyDespachosUpdater(__FILE__);
+    $updater->init();
+}
+add_action('admin_init', 'lexhoy_despachos_updater_init'); 
