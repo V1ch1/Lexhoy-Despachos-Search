@@ -1,0 +1,251 @@
+.lexhoy-despachos-search {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.lexhoy-despachos-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+/* Barra de búsqueda */
+#searchbox {
+  margin-bottom: 20px;
+}
+
+#searchbox .ais-SearchBox {
+  width: 100%;
+}
+
+#searchbox .ais-SearchBox-input {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  transition: border-color 0.2s ease;
+}
+
+#searchbox .ais-SearchBox-input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Filtros */
+.lexhoy-despachos-filters {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+#refinements > div {
+  margin-bottom: 20px;
+}
+
+#refinements h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.ais-RefinementList-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ais-RefinementList-item {
+  margin-bottom: 8px;
+}
+
+.ais-RefinementList-checkbox {
+  margin-right: 8px;
+}
+
+.ais-RefinementList-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.ais-RefinementList-count {
+  background: #e9ecef;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+/* Resultados */
+.lexhoy-despachos-main {
+  min-width: 0;
+}
+
+#stats {
+  margin-bottom: 20px;
+  color: #666;
+}
+
+.lexhoy-despachos-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.lexhoy-despacho-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.lexhoy-despacho-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.lexhoy-despacho-card h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.lexhoy-despacho-card p {
+  margin: 5px 0;
+  color: #666;
+}
+
+.lexhoy-despacho-card .especialidades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.lexhoy-despacho-card .especialidad {
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #555;
+}
+
+/* Paginación */
+#pagination {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ais-Pagination-list {
+  display: flex;
+  gap: 5px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ais-Pagination-item {
+  margin: 0;
+}
+
+.ais-Pagination-link {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.ais-Pagination-link:hover {
+  background: #f0f0f0;
+}
+
+.ais-Pagination-item--selected .ais-Pagination-link {
+  background: #007bff;
+  color: #fff;
+  border-color: #007bff;
+}
+
+.ais-Pagination-item--disabled .ais-Pagination-link {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .lexhoy-despachos-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lexhoy-despachos-filters {
+    order: 2;
+  }
+
+  .lexhoy-despachos-main {
+    order: 1;
+  }
+}
+
+/* Estilos para el admin */
+.lexhoy-despachos-admin .card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.lexhoy-despachos-admin .card h2 {
+  margin-top: 0;
+  color: #23282d;
+}
+
+.lexhoy-despachos-admin .form-table th {
+  width: 200px;
+}
+
+.lexhoy-despachos-admin .form-table input[type="text"],
+.lexhoy-despachos-admin .form-table input[type="password"] {
+  width: 100%;
+  max-width: 400px;
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.filters-header h3 {
+  margin: 0;
+}
+
+.ais-ClearRefinements-button {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.ais-ClearRefinements-button:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.ais-ClearRefinements--disabled {
+  display: none;
+}

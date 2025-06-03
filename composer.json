@@ -1,0 +1,30 @@
+{
+  "name": "lexhoy/despachos-search",
+  "description": "Plugin de WordPress para buscar despachos de abogados integrado con Algolia",
+  "type": "wordpress-plugin",
+  "license": "MIT",
+  "version": "2.2.0",
+  "authors": [
+    {
+      "name": "José Blanco",
+      "email": "info@blancoyenbatea.com",
+      "homepage": "https://blancoyenbatea.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.4",
+    "algolia/algoliasearch-client-php": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Lexhoy\\Despachos\\": "src/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

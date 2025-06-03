@@ -1,0 +1,46 @@
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de IDE/editores
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de dependencias
+/vendor/
+node_modules/
+
+# Archivos de entorno
+.env
+.env.*
+!.env.example
+
+# Archivos de logs
+*.log
+error_log
+debug.log
+
+# Archivos de caché
+*.cache
+.cache/
+
+# Archivos de compilación
+*.zip
+*.tar.gz
+dist/
+build/
+
+# Archivos de WordPress
+wp-config.php
+wp-content/advanced-cache.php
+wp-content/backup-db/
+wp-content/backups/
+wp-content/blogs.dir/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/uploads/
+wp-content/mu-plugins/
+wp-content/wp-cache-config.php
+wp-content/plugins/hello.php 
