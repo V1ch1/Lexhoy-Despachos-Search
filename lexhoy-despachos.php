@@ -921,12 +921,16 @@ class LexhoyDespachos {
     }
 
     public function add_rewrite_rules() {
+        // Regla para URLs limpias, pero excluyendo la página de búsqueda
         add_rewrite_rule(
-            '^despacho/([^/]+)/?$',
+            '^(?!buscador-de-despachos)([a-z0-9-]+)/?$',
             'index.php?despacho_slug=$matches[1]',
             'top'
         );
         add_rewrite_tag('%despacho_slug%', '([^&]+)');
+
+        // Limpiar las reglas de reescritura
+        flush_rewrite_rules();
     }
 
     public function handle_despacho_template() {
@@ -962,14 +966,31 @@ class LexhoyDespachos {
                 ]);
 
                 if (empty($results['hits'])) {
-                    wp_die('Despacho no encontrado');
+                    // Si no encontramos el despacho, dejamos que WordPress maneje la 404
+                    return;
                 }
 
                 $despacho = $results['hits'][0];
 
+                // Establecer el título de la página
+                add_filter('document_title_parts', function($title) use ($despacho) {
+                    $title['title'] = $despacho['nombre'];
+                    return $title;
+                });
+
+                // Establecer el estado de la consulta
+                $wp_query->is_single = true;
+                $wp_query->is_singular = true;
+                $wp_query->is_404 = false;
+
                 // Cargar la plantilla del despacho
-                include LEXHOY_DESPACHOS_PLUGIN_DIR . '/templates/despacho-single.php';
-                exit;
+                $template_path = LEXHOY_DESPACHOS_PLUGIN_DIR . '/templates/despacho-single.php';
+                if (file_exists($template_path)) {
+                    include $template_path;
+                    exit;
+                } else {
+                    wp_die('Error: No se encontró la plantilla del despacho.');
+                }
 
             } catch (Exception $e) {
                 wp_die('Error al obtener los datos del despacho: ' . $e->getMessage());

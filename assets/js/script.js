@@ -1,12 +1,6 @@
-// Verificar que el script se está cargando
-console.log("Script de búsqueda cargado");
-
 // Función para navegar al despacho
-function navigateToDespacho(nombre) {
-  const url =
-    window.location.origin +
-    "/" +
-    encodeURIComponent(nombre.toLowerCase().replace(/\s+/g, "-"));
+function navigateToDespacho(slug) {
+  const url = window.location.origin + "/" + slug;
   window.location.href = url;
 }
 
@@ -19,8 +13,6 @@ function checkScriptsLoaded() {
 
 // Función para inicializar la búsqueda
 function initializeSearch() {
-  console.log("Iniciando configuración de búsqueda...");
-
   // Verificar que los scripts de Algolia están cargados
   if (!checkScriptsLoaded()) {
     console.error("Los scripts de Algolia no están cargados correctamente");
@@ -54,11 +46,6 @@ function initializeSearch() {
       searchClient,
       routing: true,
     });
-
-    console.log(
-      "InstantSearch inicializado con:",
-      lexhoyDespachosData.indexName
-    );
 
     // Añadir widgets
     search.addWidgets([
@@ -134,7 +121,7 @@ function initializeSearch() {
             </div>
           `,
           item: `
-            <div class="hit" style="padding: 20px; border-bottom: 1px solid #eee; cursor: pointer;" data-nombre="{{nombre}}">
+            <div class="hit" style="padding: 20px; border-bottom: 1px solid #eee; cursor: pointer;" data-slug="{{slug}}">
               <h2 style="margin: 0 0 15px 0; font-size: 1.8em; color: #333;">{{nombre}}</h2>
               <p style="margin: 0 0 8px 0; color: #666;"><strong>Localidad:</strong> {{localidad}}</p>
               <p style="margin: 0 0 8px 0; color: #666;"><strong>Provincia:</strong> {{provincia}}</p>
@@ -160,8 +147,6 @@ function initializeSearch() {
       }),
     ]);
 
-    console.log("Widgets añadidos, iniciando búsqueda...");
-
     // Iniciar la búsqueda
     search.start();
 
@@ -170,13 +155,11 @@ function initializeSearch() {
       const hits = document.querySelectorAll(".hit");
       hits.forEach((hit) => {
         hit.addEventListener("click", function () {
-          const nombre = this.getAttribute("data-nombre");
-          navigateToDespacho(nombre);
+          const slug = this.getAttribute("data-slug");
+          navigateToDespacho(slug);
         });
       });
     });
-
-    console.log("Búsqueda iniciada correctamente");
   } catch (error) {
     console.error("Error al inicializar la búsqueda:", error);
     document.querySelector(
@@ -187,58 +170,42 @@ function initializeSearch() {
 
 // Esperar a que el DOM esté listo
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("DOM cargado");
-
-  // Verificar si los scripts están disponibles
-  console.log(
-    "Algolia Search disponible:",
-    typeof algoliasearch !== "undefined"
-  );
-  console.log(
-    "InstantSearch disponible:",
-    typeof instantsearch !== "undefined"
-  );
-  console.log(
-    "Datos de configuración:",
-    typeof lexhoyDespachosData !== "undefined"
-      ? lexhoyDespachosData
-      : "No disponible"
-  );
-
   // Verificar si estamos en la página de búsqueda
   if (document.querySelector(".lexhoy-search-container")) {
     // Inicializar la búsqueda
     initializeSearch();
   }
-});
 
-document
-  .getElementById("contact-form")
-  .addEventListener("submit", function (e) {
-    e.preventDefault();
+  // Verificar si existe el formulario de contacto antes de añadir el event listener
+  const contactForm = document.getElementById("contact-form");
+  if (contactForm) {
+    contactForm.addEventListener("submit", function (e) {
+      e.preventDefault();
 
-    const formData = new FormData(this);
-    formData.append("action", "contact_despacho");
-    formData.append("_wpnonce", lexhoyDespachos.nonce);
+      const formData = new FormData(this);
+      formData.append("action", "contact_despacho");
+      formData.append("_wpnonce", lexhoyDespachos.nonce);
 
-    fetch("/wp-admin/admin-ajax.php", {
-      method: "POST",
-      body: formData,
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          alert("Mensaje enviado correctamente");
-          this.reset();
-        } else {
-          alert("Error al enviar el mensaje: " + data.message);
-        }
+      fetch("/wp-admin/admin-ajax.php", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+        },
       })
-      .catch((error) => {
-        console.error("Error:", error);
-        alert("Error al enviar el mensaje");
-      });
-  });
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            alert("Mensaje enviado correctamente");
+            this.reset();
+          } else {
+            alert("Error al enviar el mensaje: " + data.message);
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("Error al enviar el mensaje");
+        });
+    });
+  }
+});

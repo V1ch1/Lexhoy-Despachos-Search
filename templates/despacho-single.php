@@ -1,4 +1,9 @@
 <?php
+/**
+ * Template para mostrar un despacho individual
+ */
+
+// Evitar acceso directo
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -13,7 +18,7 @@ if (!defined('ABSPATH')) {
 <body <?php body_class(); ?>>
     <?php get_header(); ?>
 
-    <div class="despacho-single-container">
+    <div class="despacho-single">
         <div class="despacho-header">
             <h1><?php echo esc_html($despacho['nombre']); ?></h1>
             <div class="despacho-meta">
@@ -23,88 +28,74 @@ if (!defined('ABSPATH')) {
         </div>
 
         <div class="despacho-content">
-            <div class="despacho-info">
-                <h2>Información de Contacto</h2>
-                <p><strong>Dirección:</strong> <?php echo esc_html($despacho['direccion']); ?></p>
-                <p><strong>Código Postal:</strong> <?php echo esc_html($despacho['codigo_postal']); ?></p>
-                <p><strong>Teléfono:</strong> <?php echo esc_html($despacho['telefono']); ?></p>
-                <?php if (!empty($despacho['email'])): ?>
-                    <p><strong>Email:</strong> <a href="mailto:<?php echo esc_attr($despacho['email']); ?>"><?php echo esc_html($despacho['email']); ?></a></p>
-                <?php endif; ?>
-                <?php if (!empty($despacho['web'])): ?>
-                    <p><strong>Sitio Web:</strong> <a href="<?php echo esc_url($despacho['web']); ?>" target="_blank"><?php echo esc_html($despacho['web']); ?></a></p>
-                <?php endif; ?>
-            </div>
-
             <?php if (!empty($despacho['areas_practica'])): ?>
-            <div class="despacho-areas">
-                <h2>Áreas de Práctica</h2>
-                <ul>
-                    <?php foreach ($despacho['areas_practica'] as $area): ?>
-                        <li><?php echo esc_html($area); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-            <?php endif; ?>
-
-            <?php if (!empty($despacho['especialidades'])): ?>
-            <div class="despacho-especialidades">
-                <h2>Especialidades</h2>
-                <ul>
-                    <?php foreach ($despacho['especialidades'] as $especialidad): ?>
-                        <li><?php echo esc_html($especialidad); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+                <div class="areas-practica">
+                    <h2>Áreas de Práctica</h2>
+                    <p><?php echo esc_html($despacho['areas_practica']); ?></p>
+                </div>
             <?php endif; ?>
 
             <?php if (!empty($despacho['descripcion'])): ?>
-            <div class="despacho-descripcion">
-                <h2>Descripción</h2>
-                <p><?php echo nl2br(esc_html($despacho['descripcion'])); ?></p>
-            </div>
+                <div class="descripcion">
+                    <h2>Descripción</h2>
+                    <p><?php echo esc_html($despacho['descripcion']); ?></p>
+                </div>
             <?php endif; ?>
 
-            <?php if (!empty($despacho['horario'])): ?>
-            <div class="despacho-horario">
-                <h2>Horario</h2>
-                <ul>
-                    <?php foreach ($despacho['horario'] as $dia => $horas): ?>
-                        <li><strong><?php echo esc_html($dia); ?>:</strong> <?php echo esc_html($horas); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+            <?php if (!empty($despacho['direccion'])): ?>
+                <div class="direccion">
+                    <h2>Dirección</h2>
+                    <p><?php echo esc_html($despacho['direccion']); ?></p>
+                </div>
             <?php endif; ?>
 
-            <?php if (!empty($despacho['redes_sociales'])): ?>
-            <div class="despacho-redes">
-                <h2>Redes Sociales</h2>
-                <ul>
-                    <?php foreach ($despacho['redes_sociales'] as $red => $url): ?>
-                        <li><a href="<?php echo esc_url($url); ?>" target="_blank"><?php echo esc_html($red); ?></a></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
+            <?php if (!empty($despacho['telefono'])): ?>
+                <div class="contacto">
+                    <h2>Contacto</h2>
+                    <p><strong>Teléfono:</strong> <?php echo esc_html($despacho['telefono']); ?></p>
+                    <?php if (!empty($despacho['email'])): ?>
+                        <p><strong>Email:</strong> <?php echo esc_html($despacho['email']); ?></p>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
+        </div>
+
+        <div class="despacho-contact-form">
+            <h2>Contactar con el Despacho</h2>
+            <form id="contact-form" method="post">
+                <input type="hidden" name="despacho_id" value="<?php echo esc_attr($despacho['objectID']); ?>">
+                <div class="form-group">
+                    <label for="nombre">Nombre:</label>
+                    <input type="text" id="nombre" name="nombre" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="mensaje">Mensaje:</label>
+                    <textarea id="mensaje" name="mensaje" required></textarea>
+                </div>
+                <button type="submit">Enviar Mensaje</button>
+            </form>
         </div>
     </div>
 
     <style>
-        .despacho-single-container {
-            max-width: 1200px;
+        .despacho-single {
+            max-width: 800px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 20px;
         }
 
         .despacho-header {
-            margin-bottom: 40px;
-            text-align: center;
+            margin-bottom: 30px;
         }
 
         .despacho-header h1 {
             font-size: 2.5em;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .despacho-meta {
@@ -112,63 +103,54 @@ if (!defined('ABSPATH')) {
         }
 
         .despacho-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
+            margin-bottom: 40px;
         }
 
-        .despacho-info,
-        .despacho-areas,
-        .despacho-especialidades,
-        .despacho-descripcion,
-        .despacho-horario,
-        .despacho-redes {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        h2 {
+        .despacho-content h2 {
+            font-size: 1.8em;
             color: #333;
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
+            margin: 25px 0 15px;
         }
 
-        ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+        .despacho-contact-form {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
         }
 
-        li {
-            margin-bottom: 10px;
-            padding-left: 20px;
-            position: relative;
+        .form-group {
+            margin-bottom: 15px;
         }
 
-        li:before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: #007bff;
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
         }
 
-        a {
-            color: #007bff;
-            text-decoration: none;
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
 
-        a:hover {
-            text-decoration: underline;
+        .form-group textarea {
+            height: 150px;
         }
 
-        @media (max-width: 768px) {
-            .despacho-content {
-                grid-template-columns: 1fr;
-            }
+        button[type="submit"] {
+            background: #0073aa;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background: #005177;
         }
     </style>
 
