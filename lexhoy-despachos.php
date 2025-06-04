@@ -1063,8 +1063,15 @@ class LexhoyDespachos {
         error_log('Lexhoy Despachos - URL actual: ' . $current_url);
         error_log('Lexhoy Despachos - Slug: ' . $slug);
 
-        // No procesar si estamos en la página del buscador
-        if ($slug === 'buscador-de-despachos') {
+        // No procesar si estamos en la página del buscador o en la home
+        if ($slug === 'buscador-de-despachos' || $slug === '') {
+            return;
+        }
+
+        // Verificar si la URL actual coincide con el patrón de un despacho
+        // Solo procesar si la URL no coincide con páginas o posts existentes
+        $existing_page = get_page_by_path($slug);
+        if ($existing_page) {
             return;
         }
 
@@ -1072,14 +1079,14 @@ class LexhoyDespachos {
         $settings = get_option('lexhoy_despachos_settings');
         
         if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
-            wp_die('Error: Por favor, configure las credenciales de Algolia en la página de configuración.');
+            return; // Silenciosamente retornar si no hay configuración
         }
 
         try {
             // Incluir el autoloader de Composer
             $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
             if (!file_exists($autoloader)) {
-                wp_die('Error: No se encontró el autoloader de Composer.');
+                return;
             }
             require_once $autoloader;
 
@@ -1095,16 +1102,11 @@ class LexhoyDespachos {
                 'hitsPerPage' => 1
             ]);
 
-            error_log('Lexhoy Despachos - Resultados de búsqueda: ' . print_r($results, true));
-
             if (empty($results['hits'])) {
-                $wp_query->set_404();
-                status_header(404);
-                return;
+                return; // Silenciosamente retornar si no se encuentra el despacho
             }
 
             $despacho = $results['hits'][0];
-            error_log('Lexhoy Despachos - Despacho encontrado: ' . print_r($despacho, true));
 
             // Establecer variables globales para que estén disponibles en la plantilla
             global $post;
@@ -1118,18 +1120,15 @@ class LexhoyDespachos {
 
             // Buscar la plantilla en el tema
             $template = locate_template('single-despacho.php');
-            error_log('Lexhoy Despachos - Plantilla del tema: ' . $template);
 
             if (!$template) {
                 // Si no existe en el tema, usar la del plugin
                 $template = plugin_dir_path(__FILE__) . 'templates/despacho-single.php';
-                error_log('Lexhoy Despachos - Usando plantilla del plugin: ' . $template);
             }
 
             // Verificar que la plantilla existe
             if (!file_exists($template)) {
-                error_log('Lexhoy Despachos - Error: No se encontró la plantilla en: ' . $template);
-                wp_die('Error: No se encontró la plantilla del despacho.');
+                return;
             }
 
             // Hacer disponible la variable global para la plantilla
@@ -1146,7 +1145,7 @@ class LexhoyDespachos {
 
         } catch (Exception $e) {
             error_log('Lexhoy Despachos Error: ' . $e->getMessage());
-            wp_die('Error al cargar el despacho: ' . $e->getMessage());
+            return;
         }
     }
 
