@@ -83,3 +83,441 @@
     max-width: none;
   }
 }
+
+/* Estilos generales */
+.lexhoy-despachos-search {
+  width: 100%;
+  max-width: 100%;
+  background-color: #ffffff;
+  font-family: "Inter", Helvetica, Arial, sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Cabecera de búsqueda */
+.search-header {
+  width: 100%;
+  min-height: 440px;
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
+  position: relative;
+  padding: 20px 40px;
+  box-sizing: border-box;
+  margin-bottom: 20px;
+}
+
+/* Título */
+.search-title {
+  font-size: x-large;
+  color: #e10000;
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
+}
+
+/* Contenedor del alfabeto */
+.alphabet-container {
+  width: 100%;
+  min-height: 81px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
+  margin-top: 20px;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Letras del alfabeto */
+.alphabet-letter {
+  font-size: 40px;
+  color: #000000;
+  cursor: pointer;
+  padding: 0 5px;
+  transition: all 0.3s ease;
+  flex: 0 0 auto;
+}
+
+.alphabet-letter:hover {
+  color: #e10000;
+}
+
+.alphabet-letter.active {
+  color: #e10000;
+  font-weight: bold;
+  transform: scale(1.1);
+}
+
+/* Contenedor de búsqueda */
+.ais-SearchBox {
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.ais-SearchBox-form {
+  position: relative;
+  width: 100%;
+}
+
+.ais-SearchBox-input {
+  width: 100%;
+  height: 45px;
+  font-size: large;
+  padding: 8px 12px;
+  border: 2px solid #000000 !important;
+  border-bottom-width: 5px !important;
+  box-sizing: border-box;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: #ffffff !important;
+}
+
+.ais-SearchBox-input::placeholder {
+  color: #e10000 !important;
+  opacity: 1 !important;
+}
+
+.ais-SearchBox-input:focus {
+  box-shadow: none !important;
+  border-color: #000000 !important;
+}
+
+.ais-SearchBox-submit {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 47px;
+  width: 110px;
+  background-color: #e10000 !important;
+  color: #ffffff !important;
+  border: none !important;
+  cursor: pointer;
+  border-left: 2px solid #000000 !important;
+  transition: background-color 0.3s ease;
+}
+
+.ais-SearchBox-submit:hover {
+  background-color: #c00000 !important;
+}
+
+.ais-SearchBox-submitIcon {
+  width: 20px;
+  height: 20px;
+  fill: #e10000 !important;
+}
+
+.ais-SearchBox-reset {
+  display: none !important;
+}
+
+/* Contenido principal (filtros + resultados) */
+.search-content {
+  display: flex;
+  gap: 20px;
+  padding: 0 40px;
+  box-sizing: border-box;
+}
+
+/* Sidebar de filtros */
+.filters-sidebar {
+  width: 33.333%;
+  flex: 0 0 33.333%;
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+}
+
+/* Sidebar de resultados */
+.results-sidebar {
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Contenedor de filtros */
+.filters-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Filtros en pestañas */
+.filters-tabs {
+  background: #ffffff;
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.filters-tab-header {
+  display: flex;
+  background: #f5f5f5;
+  border-bottom: 1px solid #000000;
+}
+
+.filter-tab-btn {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  transition: all 0.3s ease;
+  border-right: 1px solid #000000;
+}
+
+.filter-tab-btn:last-child {
+  border-right: none;
+}
+
+.filter-tab-btn:hover {
+  background: #e8e8e8;
+}
+
+.filter-tab-btn.active {
+  background: #e10000;
+  color: #ffffff;
+}
+
+.filters-tab-content {
+  padding: 20px;
+}
+
+.filter-tab-pane {
+  display: none;
+}
+
+.filter-tab-pane.active {
+  display: block;
+}
+
+/* Lista de filtros */
+.filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-item {
+  margin: 0;
+  padding: 0;
+}
+
+.filter-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 15px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #333;
+}
+
+.filter-label:hover {
+  background-color: #e8e8e8;
+}
+
+.filter-item--selected .filter-label {
+  background-color: #e10000;
+  color: white;
+  border-color: #e10000;
+}
+
+.filter-count {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.filter-item--selected .filter-count {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .search-header {
+    padding: 20px;
+  }
+
+  .search-content {
+    flex-direction: column;
+    padding: 0 20px;
+  }
+
+  .filters-sidebar,
+  .results-sidebar {
+    width: 100%;
+    flex: 0 0 100%;
+  }
+
+  .filters-sidebar {
+    position: static;
+  }
+
+  .filter-select {
+    padding: 10px;
+  }
+
+  .filter-list {
+    gap: 8px;
+  }
+
+  .filter-label {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .results-container {
+    grid-template-columns: 1fr;
+  }
+
+  .alphabet-container {
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 10px;
+  }
+
+  .alphabet-letter {
+    font-size: 30px;
+  }
+
+  .ais-Pagination {
+    margin: 20px 0;
+  }
+}
+
+/* Contenedor de resultados */
+.results-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Contenedor principal de resultados */
+.ais-Hits {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  width: 100%;
+  padding: 0;
+}
+
+.ais-Hits-list {
+  display: contents;
+}
+
+.ais-Hits-item {
+  width: 100%;
+}
+
+/* Tarjeta de despacho */
+.despacho-card {
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
+  padding: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  line-height: 1.4;
+}
+
+.despacho-name {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #000;
+  line-height: 1.3;
+}
+
+.despacho-location {
+  font-size: 18px;
+  margin-bottom: 15px;
+  color: #000;
+  line-height: 1.4;
+}
+
+.despacho-areas {
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: #000;
+  line-height: 1.5;
+}
+
+.despacho-link {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 5px 10px;
+  border: 1px solid #000000;
+  border-bottom-width: 3px;
+  color: #e10000;
+  text-decoration: none;
+  font-size: 16px;
+}
+
+/* Paginación */
+.ais-Pagination {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.ais-Pagination-list {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+
+.ais-Pagination-item {
+  padding: 5px 10px;
+  border: 1px solid #000000;
+  cursor: pointer;
+}
+
+.ais-Pagination-item--selected {
+  background-color: #e10000;
+  color: #ffffff;
+}
+
+/* Mensaje de no resultados */
+.no-results {
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+  color: #666;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ais-Hits {
+    grid-template-columns: 1fr;
+  }
+}

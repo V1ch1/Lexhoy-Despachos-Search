@@ -106,8 +106,8 @@ function initializeSearch() {
         gap: 6px;
         overflow: visible;
         justify-content: flex-start;
-      }
-      
+    }
+
       .area-tag {
         display: inline-block;
         background: #f8f9fa;
@@ -175,7 +175,7 @@ function initializeSearch() {
       @media (max-width: 768px) {
         .hits-list {
           grid-template-columns: 1fr;
-        }
+    }
         
         .hit-card {
           height: 160px;

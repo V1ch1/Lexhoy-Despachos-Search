@@ -557,31 +557,31 @@ class LexhoyDespachos {
 
             // Solo cargar los scripts de Algolia en la página de búsqueda
             if (is_page('buscador-de-despachos')) {
-                // Estilos de Algolia InstantSearch
-                wp_enqueue_style(
-                    'algolia-instantsearch',
-                    'https://cdn.jsdelivr.net/npm/instantsearch.css@8.1.0/themes/satellite-min.css',
-                    array(),
-                    '8.1.0'
-                );
+            // Estilos de Algolia InstantSearch
+            wp_enqueue_style(
+                'algolia-instantsearch',
+                'https://cdn.jsdelivr.net/npm/instantsearch.css@8.1.0/themes/satellite-min.css',
+                array(),
+                '8.1.0'
+            );
 
-                // Script de Algolia Search
-                wp_enqueue_script(
-                    'algolia-search',
-                    'https://cdn.jsdelivr.net/npm/algoliasearch@4.22.1/dist/algoliasearch-lite.umd.js',
-                    array('jquery'),
-                    '4.22.1',
-                    false
-                );
+            // Script de Algolia Search
+            wp_enqueue_script(
+                'algolia-search',
+                'https://cdn.jsdelivr.net/npm/algoliasearch@4.22.1/dist/algoliasearch-lite.umd.js',
+                array('jquery'),
+                '4.22.1',
+                false
+            );
 
-                // Script de Algolia InstantSearch
-                wp_enqueue_script(
-                    'algolia-instantsearch',
-                    'https://cdn.jsdelivr.net/npm/instantsearch.js@4.60.0/dist/instantsearch.production.min.js',
-                    array('jquery', 'algolia-search'),
-                    '4.60.0',
-                    false
-                );
+            // Script de Algolia InstantSearch
+            wp_enqueue_script(
+                'algolia-instantsearch',
+                'https://cdn.jsdelivr.net/npm/instantsearch.js@4.60.0/dist/instantsearch.production.min.js',
+                array('jquery', 'algolia-search'),
+                '4.60.0',
+                false
+            );
 
                 // Script personalizado de búsqueda
                 wp_enqueue_script(
@@ -594,7 +594,7 @@ class LexhoyDespachos {
 
                 // Obtener las credenciales de Algolia desde la configuración
                 $settings = get_option('lexhoy_despachos_settings');
-                
+
                 // Añadir datos para el script
                 wp_localize_script('lexhoy-despachos-search', 'lexhoyDespachosData', array(
                     'appId' => $settings['algolia_app_id'] ?? '',
@@ -610,203 +610,8 @@ class LexhoyDespachos {
     public function render_search_form() {
         try {
             ob_start();
-            ?>
-            <style>
-                .lexhoy-search-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }
-                
-                .lexhoy-search-layout {
-                    display: flex;
-                    gap: 20px;
-                }
-                
-                .lexhoy-filters-panel {
-                    flex: 0 0 300px;
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 8px;
-                }
-                
-                .lexhoy-results-panel {
-                    flex: 1;
-                }
-
-                .filter-section {
-                    margin-bottom: 25px;
-                }
-
-                .filter-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
-                .filter-content {
-                    padding: 10px 0;
-                }
-
-                .filter-toggle {
-                    display: none; /* Oculto por defecto en escritorio */
-                }
-                
-                /* Estilos para móvil */
-                @media (max-width: 768px) {
-                    .lexhoy-search-layout {
-                        flex-direction: column;
-                    }
-                    
-                    .lexhoy-filters-panel {
-                        flex: none;
-                        width: 100%;
-                        margin-bottom: 20px;
-                    }
-                    
-                    .lexhoy-results-panel {
-                        width: 100%;
-                    }
-
-                    .filter-header {
-                        cursor: pointer;
-                        padding: 10px;
-                        background: #fff;
-                        border-radius: 4px;
-                        transition: background-color 0.3s;
-                    }
-
-                    .filter-header:hover {
-                        background: #f0f0f0;
-                    }
-
-                    .filter-toggle {
-                        display: block;
-                        width: 20px;
-                        height: 20px;
-                        position: relative;
-                        transition: transform 0.3s;
-                    }
-
-                    .filter-toggle::before,
-                    .filter-toggle::after {
-                        content: '';
-                        position: absolute;
-                        background: #666;
-                        transition: transform 0.3s;
-                    }
-
-                    .filter-toggle::before {
-                        width: 2px;
-                        height: 12px;
-                        top: 4px;
-                        left: 9px;
-                    }
-
-                    .filter-toggle::after {
-                        width: 12px;
-                        height: 2px;
-                        top: 9px;
-                        left: 4px;
-                    }
-
-                    .filter-section.active .filter-toggle::before {
-                        transform: rotate(90deg);
-                    }
-
-                    .filter-content {
-                        display: none;
-                        padding: 10px;
-                        background: #fff;
-                        border-radius: 0 0 4px 4px;
-                    }
-
-                    .filter-section.active .filter-content {
-                        display: block;
-                    }
-
-                    .filter-header {
-                        margin-bottom: 0;
-                        border-radius: 4px 4px 0 0;
-                    }
-
-                    .filter-section.active .filter-header {
-                        border-radius: 4px 4px 0 0;
-                    }
-                }
-            </style>
-
-            <div class="ais-InstantSearch lexhoy-search-container">
-                <!-- Barra de búsqueda -->
-                <div id="searchbox" style="margin-bottom: 20px; min-height: 50px;"></div>
-
-                <!-- Layout principal -->
-                <div class="lexhoy-search-layout">
-                    <!-- Panel de filtros -->
-                    <div class="lexhoy-filters-panel">
-                        <h3 style="margin-top: 0; margin-bottom: 20px; color: #333; font-size: 1.4em; font-weight: 600; padding-bottom: 10px; border-bottom: 2px solid #2271b1;">Filtros</h3>
-                        
-                        <!-- Filtro de Provincia -->
-                        <div class="filter-section">
-                            <div class="filter-header">
-                                <h4 style="margin: 0; color: #555; font-size: 1em;">Provincia</h4>
-                                <div class="filter-toggle"></div>
-                            </div>
-                            <div class="filter-content">
-                                <div id="province-list"></div>
-                            </div>
-                        </div>
-
-                        <!-- Filtro de Localidad -->
-                        <div class="filter-section">
-                            <div class="filter-header">
-                                <h4 style="margin: 0; color: #555; font-size: 1em;">Localidad</h4>
-                                <div class="filter-toggle"></div>
-                            </div>
-                            <div class="filter-content">
-                                <div id="city-list"></div>
-                            </div>
-                        </div>
-
-                        <!-- Filtro de Área de Práctica -->
-                        <div class="filter-section">
-                            <div class="filter-header">
-                                <h4 style="margin: 0; color: #555; font-size: 1em;">Área de Práctica</h4>
-                                <div class="filter-toggle"></div>
-                            </div>
-                            <div class="filter-content">
-                                <div id="practice-area-list"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Contenido principal -->
-                    <div class="lexhoy-results-panel">
-                        <div id="hits" style="background: #fff; border-radius: 8px;"></div>
-                        <div id="pagination" style="margin-top: 20px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Solo añadir el evento click en móvil
-                    if (window.innerWidth <= 768) {
-                        const filterHeaders = document.querySelectorAll('.filter-header');
-                        
-                        filterHeaders.forEach(header => {
-                            header.addEventListener('click', function() {
-                                const section = this.parentElement;
-                                section.classList.toggle('active');
-                            });
-                        });
-                    }
-                });
-            </script>
-            <?php
-            $html = ob_get_clean();
-            error_log('Lexhoy Despachos - HTML generado: ' . $html);
-            return $html;
+            include plugin_dir_path(__FILE__) . 'templates/search-template.php';
+            return ob_get_clean();
         } catch (Exception $e) {
             error_log('Lexhoy Despachos Error: ' . $e->getMessage());
             return '<p>Error: ' . esc_html($e->getMessage()) . '</p>';
@@ -1426,7 +1231,7 @@ function lexhoy_despachos_activate() {
 // Registrar la función de activación
 register_activation_hook(__FILE__, 'lexhoy_despachos_activate');
 
-add_action('plugins_loaded', 'lexhoy_despachos_init');
+add_action('plugins_loaded', 'lexhoy_despachos_init'); 
 
 // Función para mostrar la página de áreas de práctica
 function lexhoy_areas_practica_page() {
