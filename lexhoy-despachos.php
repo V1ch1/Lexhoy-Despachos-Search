@@ -16,11 +16,15 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Habilitar todos los errores para diagnóstico
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Log de prueba directo
 error_log('=== PRUEBA DE LOG DIRECTO ===');
 error_log('Plugin Lexhoy Despachos iniciado');
 error_log('Ruta del plugin: ' . __FILE__);
-error_log('Ruta del debug.log: C:/Users/blanc/Local Sites/lexhoy/app/public/debug.log');
+error_log('Ruta del debug.log: ' . WP_CONTENT_DIR . '/debug.log');
 
 // Verificar que WordPress está cargado
 if (!function_exists('add_action')) {
@@ -39,8 +43,50 @@ define('LEXHOY_DESPACHOS_PLUGIN_URL', plugins_url('', __FILE__));
 define('LEXHOY_DESPACHOS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('LEXHOY_DESPACHOS_GITHUB_REPO', 'V1ch1/Lexhoy-Despachos-Search');
 
+// Función para registrar errores
+function lexhoy_despachos_error_handler($errno, $errstr, $errfile, $errline) {
+    error_log("Lexhoy Despachos Error [$errno]: $errstr en $errfile:$errline");
+    return false;
+}
+
+// Registrar el manejador de errores
+set_error_handler('lexhoy_despachos_error_handler');
+
+// Función para registrar excepciones
+function lexhoy_despachos_exception_handler($exception) {
+    error_log("Lexhoy Despachos Exception: " . $exception->getMessage() . " en " . $exception->getFile() . ":" . $exception->getLine());
+    error_log("Stack trace: " . $exception->getTraceAsString());
+}
+
+// Registrar el manejador de excepciones
+set_exception_handler('lexhoy_despachos_exception_handler');
+
 // Incluir el instalador de Composer
 require_once plugin_dir_path(__FILE__) . 'includes/class-composer-installer.php';
+
+// Función para mostrar errores de forma visible
+function lexhoy_despachos_show_error($message, $title = 'Error', $is_fatal = true) {
+    $error_html = '
+    <div style="background: #fff; border-left: 4px solid #dc3232; box-shadow: 0 1px 1px rgba(0,0,0,.04); margin: 20px; padding: 20px;">
+        <h2 style="color: #dc3232; margin-top: 0;">' . esc_html($title) . '</h2>
+        <div style="background: #f8f8f8; border: 1px solid #e5e5e5; padding: 15px; margin: 10px 0;">
+            ' . wp_kses_post($message) . '
+        </div>
+        <p>
+            <a href="' . esc_url(admin_url('plugins.php')) . '" style="background: #0073aa; color: #fff; padding: 5px 10px; text-decoration: none; border-radius: 3px;">
+                Volver a Plugins
+            </a>
+        </p>
+    </div>';
+
+    if ($is_fatal) {
+        wp_die($error_html, $title, array('back_link' => false));
+    } else {
+        add_action('admin_notices', function() use ($error_html) {
+            echo $error_html;
+        });
+    }
+}
 
 // Clase para manejar las actualizaciones
 class LexhoyDespachosUpdater {
@@ -1204,14 +1250,43 @@ function lexhoy_despachos_init() {
 register_activation_hook(__FILE__, 'lexhoy_despachos_activate');
 function lexhoy_despachos_activate() {
     try {
+        error_log('Iniciando activación del plugin Lexhoy Despachos');
+        
+        // Verificar que el archivo del instalador existe
+        $installer_path = dirname(__FILE__) . '/includes/class-composer-installer.php';
+        error_log('Buscando instalador en: ' . $installer_path);
+        
+        if (!file_exists($installer_path)) {
+            throw new Exception('
+                <strong>No se encontró el archivo del instalador.</strong><br>
+                Ruta buscada: ' . esc_html($installer_path) . '<br>
+                Por favor, verifica que la estructura de carpetas es correcta:
+                <ul>
+                    <li>lexhoy-despachos/
+                        <ul>
+                            <li>includes/
+                                <ul>
+                                    <li>class-composer-installer.php</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            ');
+        }
+        
         // Incluir el instalador de Composer
-        require_once dirname(__FILE__) . '/includes/class-composer-installer.php';
+        require_once $installer_path;
+        error_log('Instalador incluido correctamente');
         
         // Crear instancia del instalador
         $composer_installer = new Lexhoy_Composer_Installer();
+        error_log('Instancia del instalador creada');
         
         // Verificar requisitos
         $check_result = $composer_installer->check_requirements();
+        error_log('Resultado de verificación de requisitos: ' . print_r($check_result, true));
+        
         $requirements = $check_result['requirements'];
         $optional_requirements = $check_result['optional_requirements'];
         $diagnostic = $check_result['diagnostic'];
@@ -1230,16 +1305,27 @@ function lexhoy_despachos_activate() {
         
         // Mostrar errores de requisitos críticos
         if (!empty($critical_requirements)) {
-            $error_message .= '<h2>Requisitos críticos no cumplidos:</h2>';
+            $error_message .= '<h3>Requisitos críticos no cumplidos:</h3>';
             $error_message .= '<ul>';
             
             foreach ($critical_requirements as $requirement => $value) {
                 switch ($requirement) {
                     case 'php_version':
-                        $error_message .= '<li>Versión de PHP debe ser 7.2 o superior (Actual: ' . $diagnostic['php_version'] . ')</li>';
+                        $error_message .= '<li>
+                            <strong>Versión de PHP insuficiente</strong><br>
+                            Requerida: 7.2 o superior<br>
+                            Actual: ' . esc_html($diagnostic['php_version']) . '<br>
+                            Solución: Actualiza PHP en tu servidor
+                        </li>';
                         break;
                     case 'writable_dir':
-                        $error_message .= '<li>El directorio del plugin debe tener permisos de escritura (Permisos actuales: ' . $diagnostic['plugin_dir_permissions'] . ')</li>';
+                        $error_message .= '<li>
+                            <strong>Problema de permisos</strong><br>
+                            El directorio del plugin no tiene permisos de escritura<br>
+                            Ruta: ' . esc_html($diagnostic['plugin_dir']) . '<br>
+                            Permisos actuales: ' . esc_html($diagnostic['plugin_dir_permissions']) . '<br>
+                            Solución: Cambia los permisos del directorio a 755
+                        </li>';
                         break;
                 }
             }
@@ -1247,41 +1333,53 @@ function lexhoy_despachos_activate() {
             $error_message .= '</ul>';
             
             // Si hay requisitos críticos no cumplidos, detener la instalación
-            wp_die($error_message, 'Error de Activación', array('back_link' => true));
+            lexhoy_despachos_show_error($error_message, 'Error de Activación - Requisitos no cumplidos');
         }
         
         // Mostrar advertencias de requisitos opcionales
         if (!empty($missing_optional)) {
-            $error_message .= '<h2>Advertencias:</h2>';
-            $error_message .= '<ul>';
+            $warning_message = '<h3>Advertencias:</h3>';
+            $warning_message .= '<ul>';
             
             foreach ($missing_optional as $requirement => $value) {
                 switch ($requirement) {
                     case 'curl_enabled':
-                        $error_message .= '<li>cURL está deshabilitado. Algunas funcionalidades podrían no estar disponibles.</li>';
+                        $warning_message .= '<li>
+                            <strong>cURL deshabilitado</strong><br>
+                            Algunas funcionalidades podrían no estar disponibles.<br>
+                            Solución: Habilita cURL en tu servidor
+                        </li>';
                         break;
                     case 'exec_enabled':
-                        $error_message .= '<li>La función exec() está deshabilitada. Se intentarán métodos alternativos.</li>';
+                        $warning_message .= '<li>
+                            <strong>Función exec() deshabilitada</strong><br>
+                            Se intentarán métodos alternativos.<br>';
                         if (!empty($diagnostic['disable_functions'])) {
-                            $error_message .= '<br>Funciones deshabilitadas: ' . $diagnostic['disable_functions'];
+                            $warning_message .= 'Funciones deshabilitadas: ' . esc_html($diagnostic['disable_functions']);
                         }
+                        $warning_message .= '</li>';
                         break;
                 }
             }
             
-            $error_message .= '</ul>';
+            $warning_message .= '</ul>';
             
             // Mostrar advertencias pero continuar
-            add_action('admin_notices', function() use ($error_message) {
-                echo '<div class="notice notice-warning">';
-                echo $error_message;
-                echo '</div>';
-            });
+            lexhoy_despachos_show_error($warning_message, 'Advertencias de Activación', false);
         }
         
         // Intentar instalar Composer y sus dependencias
         if (!$composer_installer->check_composer()) {
-            wp_die('No se pudo instalar Composer o sus dependencias. Por favor, verifica los logs del servidor.', 'Error de Instalación', array('back_link' => true));
+            throw new Exception('
+                <strong>Error al instalar Composer</strong><br>
+                No se pudo instalar Composer o sus dependencias.<br>
+                Por favor, verifica que:
+                <ul>
+                    <li>El directorio del plugin tiene permisos de escritura</li>
+                    <li>Hay suficiente espacio en disco</li>
+                    <li>El servidor puede conectarse a getcomposer.org</li>
+                </ul>
+            ');
         }
         
         // Crear la página de búsqueda si no existe
@@ -1300,10 +1398,12 @@ function lexhoy_despachos_activate() {
         
         // Limpiar las reglas de reescritura
         flush_rewrite_rules();
+        error_log('Reglas de reescritura actualizadas');
+        
+        error_log('Activación del plugin completada con éxito');
         
     } catch (Exception $e) {
-        error_log('Error en la activación del plugin: ' . $e->getMessage());
-        wp_die('Error al activar el plugin: ' . $e->getMessage(), 'Error de Activación', array('back_link' => true));
+        lexhoy_despachos_show_error($e->getMessage(), 'Error de Activación');
     }
 }
 
