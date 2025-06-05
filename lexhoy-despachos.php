@@ -1166,34 +1166,21 @@ function lexhoy_despachos_init() {
 
 // Función para ejecutar composer install
 function lexhoy_despachos_activate() {
-    try {
-        // Crear la página de búsqueda si no existe
-        $search_page = get_page_by_path('buscar-despachos');
-        if (!$search_page) {
-            $page_id = wp_insert_post(array(
-                'post_title' => 'Buscar Despachos',
-                'post_content' => '[lexhoy_despachos_search]',
-                'post_status' => 'publish',
-                'post_type' => 'page',
-                'post_name' => 'buscar-despachos'
-            ));
-
-            if (!is_wp_error($page_id)) {
-                update_option('lexhoy_despachos_search_page_id', $page_id);
-            }
-        }
-
-        // Registrar el Custom Post Type
-        $plugin = LexhoyDespachos::get_instance();
-        $plugin->register_despacho_post_type();
-
-        // Limpiar las reglas de reescritura
-        flush_rewrite_rules();
-
-    } catch (Exception $e) {
-        error_log('Lexhoy Despachos Error en la activación: ' . $e->getMessage());
-        wp_die('Error al activar el plugin: ' . $e->getMessage());
-    }
+    // Registrar el tipo de post
+    $plugin = new LexhoyDespachos();
+    $plugin->register_despacho_post_type();
+    
+    // Limpiar las reglas de reescritura
+    flush_rewrite_rules();
+    
+    // Instalar dependencias de Algolia
+    require_once plugin_dir_path(__FILE__) . 'install-dependencies.php';
+    
+    // Crear página de búsqueda si no existe
+    $plugin->create_search_page();
+    
+    // Actualizar slugs existentes
+    $plugin->update_existing_despachos_slugs();
 }
 
 // Registrar la función de activación
