@@ -1205,7 +1205,7 @@ register_activation_hook(__FILE__, 'lexhoy_despachos_activate');
 function lexhoy_despachos_activate() {
     try {
         // Incluir el instalador de Composer
-        require_once plugin_dir_path(__FILE__) . 'includes/class-composer-installer.php';
+        require_once dirname(__FILE__) . '/includes/class-composer-installer.php';
         
         // Crear instancia del instalador
         $composer_installer = new Lexhoy_Composer_Installer();
@@ -1213,27 +1213,30 @@ function lexhoy_despachos_activate() {
         // Verificar requisitos
         $check_result = $composer_installer->check_requirements();
         $requirements = $check_result['requirements'];
+        $optional_requirements = $check_result['optional_requirements'];
         $diagnostic = $check_result['diagnostic'];
         
-        // Verificar si hay requisitos no cumplidos
-        $missing_requirements = array_filter($requirements, function($value) {
+        // Verificar requisitos críticos
+        $critical_requirements = array_filter($requirements, function($value) {
             return $value === false;
         });
         
-        if (!empty($missing_requirements)) {
-            $error_message = '<h2>Requisitos no cumplidos:</h2>';
+        // Verificar requisitos opcionales
+        $missing_optional = array_filter($optional_requirements, function($value) {
+            return $value === false;
+        });
+        
+        $error_message = '';
+        
+        // Mostrar errores de requisitos críticos
+        if (!empty($critical_requirements)) {
+            $error_message .= '<h2>Requisitos críticos no cumplidos:</h2>';
             $error_message .= '<ul>';
             
-            foreach ($missing_requirements as $requirement => $value) {
+            foreach ($critical_requirements as $requirement => $value) {
                 switch ($requirement) {
                     case 'php_version':
                         $error_message .= '<li>Versión de PHP debe ser 7.2 o superior (Actual: ' . $diagnostic['php_version'] . ')</li>';
-                        break;
-                    case 'curl_enabled':
-                        $error_message .= '<li>cURL debe estar habilitado</li>';
-                        break;
-                    case 'exec_enabled':
-                        $error_message .= '<li>La función exec() debe estar habilitada</li>';
                         break;
                     case 'writable_dir':
                         $error_message .= '<li>El directorio del plugin debe tener permisos de escritura (Permisos actuales: ' . $diagnostic['plugin_dir_permissions'] . ')</li>';
@@ -1242,15 +1245,38 @@ function lexhoy_despachos_activate() {
             }
             
             $error_message .= '</ul>';
-            $error_message .= '<h3>Información del sistema:</h3>';
+            
+            // Si hay requisitos críticos no cumplidos, detener la instalación
+            wp_die($error_message, 'Error de Activación', array('back_link' => true));
+        }
+        
+        // Mostrar advertencias de requisitos opcionales
+        if (!empty($missing_optional)) {
+            $error_message .= '<h2>Advertencias:</h2>';
             $error_message .= '<ul>';
-            $error_message .= '<li>Sistema Operativo: ' . $diagnostic['os'] . '</li>';
-            $error_message .= '<li>Servidor: ' . $diagnostic['server_software'] . '</li>';
-            $error_message .= '<li>Límite de memoria: ' . $diagnostic['memory_limit'] . '</li>';
-            $error_message .= '<li>Tiempo máximo de ejecución: ' . $diagnostic['max_execution_time'] . ' segundos</li>';
+            
+            foreach ($missing_optional as $requirement => $value) {
+                switch ($requirement) {
+                    case 'curl_enabled':
+                        $error_message .= '<li>cURL está deshabilitado. Algunas funcionalidades podrían no estar disponibles.</li>';
+                        break;
+                    case 'exec_enabled':
+                        $error_message .= '<li>La función exec() está deshabilitada. Se intentarán métodos alternativos.</li>';
+                        if (!empty($diagnostic['disable_functions'])) {
+                            $error_message .= '<br>Funciones deshabilitadas: ' . $diagnostic['disable_functions'];
+                        }
+                        break;
+                }
+            }
+            
             $error_message .= '</ul>';
             
-            wp_die($error_message, 'Error de Activación', array('back_link' => true));
+            // Mostrar advertencias pero continuar
+            add_action('admin_notices', function() use ($error_message) {
+                echo '<div class="notice notice-warning">';
+                echo $error_message;
+                echo '</div>';
+            });
         }
         
         // Intentar instalar Composer y sus dependencias

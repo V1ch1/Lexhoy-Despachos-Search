@@ -11,10 +11,10 @@ class Lexhoy_Composer_Installer {
     private $vendor_path;
 
     public function __construct() {
-        $this->plugin_dir = plugin_dir_path(dirname(__FILE__));
-        $this->composer_installer_path = $this->plugin_dir . 'composer-setup.php';
-        $this->composer_phar_path = $this->plugin_dir . 'composer.phar';
-        $this->vendor_path = $this->plugin_dir . 'vendor';
+        $this->plugin_dir = dirname(dirname(__FILE__));
+        $this->composer_installer_path = $this->plugin_dir . '/composer-setup.php';
+        $this->composer_phar_path = $this->plugin_dir . '/composer.phar';
+        $this->vendor_path = $this->plugin_dir . '/vendor';
     }
 
     /**
@@ -48,11 +48,31 @@ class Lexhoy_Composer_Installer {
      * Verifica los requisitos del sistema
      */
     public function check_requirements() {
+        // Intentar diferentes métodos para verificar permisos
+        $plugin_dir_writable = false;
+        $methods = array(
+            'is_writable' => function($dir) { return is_writable($dir); },
+            'chmod' => function($dir) { return @chmod($dir, 0755); },
+            'mkdir' => function($dir) { return @mkdir($dir . '/test', 0755, true) && @rmdir($dir . '/test'); }
+        );
+
+        foreach ($methods as $method => $callback) {
+            if ($callback($this->plugin_dir)) {
+                $plugin_dir_writable = true;
+                break;
+            }
+        }
+
+        // Verificar requisitos básicos
         $requirements = array(
             'php_version' => version_compare(PHP_VERSION, '7.2', '>='),
+            'writable_dir' => $plugin_dir_writable
+        );
+
+        // Verificar requisitos opcionales
+        $optional_requirements = array(
             'curl_enabled' => function_exists('curl_init'),
             'exec_enabled' => function_exists('exec'),
-            'writable_dir' => is_writable($this->plugin_dir),
             'composer_exists' => file_exists($this->composer_phar_path),
             'vendor_exists' => file_exists($this->vendor_path . '/autoload.php')
         );
@@ -67,8 +87,13 @@ class Lexhoy_Composer_Installer {
             'upload_max_filesize' => ini_get('upload_max_filesize'),
             'post_max_size' => ini_get('post_max_size'),
             'plugin_dir' => $this->plugin_dir,
-            'plugin_dir_writable' => is_writable($this->plugin_dir),
-            'plugin_dir_permissions' => substr(sprintf('%o', fileperms($this->plugin_dir)), -4)
+            'plugin_dir_writable' => $plugin_dir_writable,
+            'plugin_dir_permissions' => substr(sprintf('%o', fileperms($this->plugin_dir)), -4),
+            'curl_enabled' => function_exists('curl_init'),
+            'exec_enabled' => function_exists('exec'),
+            'safe_mode' => ini_get('safe_mode'),
+            'disable_functions' => ini_get('disable_functions'),
+            'open_basedir' => ini_get('open_basedir')
         );
 
         // Registrar información de diagnóstico
@@ -76,6 +101,7 @@ class Lexhoy_Composer_Installer {
 
         return array(
             'requirements' => $requirements,
+            'optional_requirements' => $optional_requirements,
             'diagnostic' => $diagnostic_info
         );
     }
@@ -85,8 +111,40 @@ class Lexhoy_Composer_Installer {
      */
     private function install_composer() {
         try {
-            // Intentar descargar el instalador
-            $installer = $this->download_composer_installer();
+            // Intentar diferentes métodos de descarga
+            $installer = null;
+            $download_methods = array(
+                'file_get_contents' => function() {
+                    return @file_get_contents($this->composer_installer_url);
+                },
+                'curl' => function() {
+                    if (function_exists('curl_init')) {
+                        $ch = curl_init();
+                        curl_setopt($ch, CURLOPT_URL, $this->composer_installer_url);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        $result = curl_exec($ch);
+                        curl_close($ch);
+                        return $result;
+                    }
+                    return false;
+                },
+                'wget' => function() {
+                    if (function_exists('exec')) {
+                        $command = 'wget -q -O - ' . escapeshellarg($this->composer_installer_url);
+                        return @exec($command);
+                    }
+                    return false;
+                }
+            );
+
+            foreach ($download_methods as $method => $callback) {
+                $installer = $callback();
+                if ($installer !== false) {
+                    break;
+                }
+            }
+
             if (!$installer) {
                 throw new Exception('No se pudo descargar el instalador de Composer');
             }
@@ -115,41 +173,6 @@ class Lexhoy_Composer_Installer {
     }
 
     /**
-     * Descarga el instalador de Composer
-     */
-    private function download_composer_installer() {
-        // Intentar con file_get_contents
-        $installer = @file_get_contents($this->composer_installer_url);
-        if ($installer !== false) {
-            return $installer;
-        }
-
-        // Intentar con cURL
-        if (function_exists('curl_init')) {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $this->composer_installer_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $installer = curl_exec($ch);
-            curl_close($ch);
-            if ($installer !== false) {
-                return $installer;
-            }
-        }
-
-        // Intentar con wget
-        if (function_exists('exec')) {
-            $command = 'wget -q -O - ' . escapeshellarg($this->composer_installer_url);
-            $installer = @exec($command);
-            if ($installer !== false) {
-                return $installer;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Ejecuta composer install
      */
     private function run_composer_install() {
@@ -159,18 +182,30 @@ class Lexhoy_Composer_Installer {
                 throw new Exception('El directorio del plugin no tiene permisos de escritura');
             }
 
-            // Intentar con PHP
-            $command = 'php ' . escapeshellarg($this->composer_phar_path) . ' install --no-dev --optimize-autoloader';
-            exec($command, $output, $return_var);
-
-            if ($return_var !== 0) {
-                // Intentar con composer global
-                $command = 'composer install --no-dev --optimize-autoloader';
-                exec($command, $output, $return_var);
-
-                if ($return_var !== 0) {
-                    throw new Exception('No se pudo ejecutar composer install');
+            // Intentar diferentes métodos de instalación
+            $install_methods = array(
+                'php_composer' => function() {
+                    $command = 'php ' . escapeshellarg($this->composer_phar_path) . ' install --no-dev --optimize-autoloader';
+                    exec($command, $output, $return_var);
+                    return $return_var === 0;
+                },
+                'global_composer' => function() {
+                    $command = 'composer install --no-dev --optimize-autoloader';
+                    exec($command, $output, $return_var);
+                    return $return_var === 0;
                 }
+            );
+
+            $success = false;
+            foreach ($install_methods as $method => $callback) {
+                if ($callback()) {
+                    $success = true;
+                    break;
+                }
+            }
+
+            if (!$success) {
+                throw new Exception('No se pudo ejecutar composer install');
             }
 
             return true;
