@@ -39,6 +39,9 @@ define('LEXHOY_DESPACHOS_PLUGIN_URL', plugins_url('', __FILE__));
 define('LEXHOY_DESPACHOS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('LEXHOY_DESPACHOS_GITHUB_REPO', 'V1ch1/Lexhoy-Despachos-Search');
 
+// Incluir la biblioteca de Algolia directamente
+require_once dirname(__FILE__) . '/lib/algoliasearch-client-php/autoload.php';
+
 // Clase para manejar las actualizaciones
 class LexhoyDespachosUpdater {
     private $file;
@@ -646,14 +649,7 @@ class LexhoyDespachos {
                 return;
             }
 
-            // Incluir el autoloader de Composer
-            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-            if (!file_exists($autoloader)) {
-                wp_send_json_error('Error: No se encontró el autoloader de Composer.');
-                return;
-            }
-            require_once $autoloader;
-
+            // Crear el cliente de Algolia
             $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
                 $settings['algolia_app_id'],
                 $settings['algolia_admin_api_key']
@@ -888,13 +884,6 @@ class LexhoyDespachos {
         }
 
         try {
-            // Incluir el autoloader de Composer
-            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-            if (!file_exists($autoloader)) {
-                return;
-            }
-            require_once $autoloader;
-
             // Crear el cliente de Algolia
             $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
                 $settings['algolia_app_id'],
@@ -956,14 +945,6 @@ class LexhoyDespachos {
 
     public function update_existing_despachos_slugs() {
         try {
-            // Incluir el autoloader de Composer
-            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-            if (!file_exists($autoloader)) {
-                error_log('Error: No se encontró el autoloader de Composer.');
-                return false;
-            }
-            require_once $autoloader;
-
             $settings = get_option('lexhoy_despachos_settings');
             if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
                 return false;
@@ -1000,13 +981,6 @@ class LexhoyDespachos {
 
     public function verify_slugs() {
         try {
-            // Incluir el autoloader de Composer
-            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-            if (!file_exists($autoloader)) {
-                return false;
-            }
-            require_once $autoloader;
-
             $settings = get_option('lexhoy_despachos_settings');
             if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
                 return false;
@@ -1154,13 +1128,6 @@ class LexhoyDespachos {
                 throw new Exception('Credenciales de Algolia no configuradas');
             }
 
-            // Incluir el autoloader de Composer
-            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-            if (!file_exists($autoloader)) {
-                throw new Exception('No se encontró el autoloader de Composer');
-            }
-            require_once $autoloader;
-
             // Crear el cliente de Algolia
             $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
                 $settings['algolia_app_id'],
@@ -1200,48 +1167,6 @@ function lexhoy_despachos_init() {
 // Función para ejecutar composer install
 function lexhoy_despachos_activate() {
     try {
-        $plugin_dir = dirname(__FILE__);
-        $composer_phar = $plugin_dir . '/composer.phar';
-        $autoloader = $plugin_dir . '/vendor/autoload.php';
-
-        // Verificar si el autoloader ya existe
-        if (!file_exists($autoloader)) {
-            error_log('Lexhoy Despachos - Iniciando instalación de Composer');
-
-            // Descargar Composer si no existe
-            if (!file_exists($composer_phar)) {
-                error_log('Lexhoy Despachos - Descargando Composer');
-                $composer_installer = file_get_contents('https://getcomposer.org/installer');
-                if ($composer_installer === false) {
-                    throw new Exception('No se pudo descargar el instalador de Composer');
-                }
-                if (file_put_contents($composer_phar, $composer_installer) === false) {
-                    throw new Exception('No se pudo guardar el instalador de Composer');
-                }
-                chmod($composer_phar, 0755);
-            }
-
-            // Ejecutar Composer install
-            error_log('Lexhoy Despachos - Ejecutando Composer install');
-            $command = sprintf(
-                'cd %s && php %s install --no-interaction --no-dev --optimize-autoloader',
-                escapeshellarg($plugin_dir),
-                escapeshellarg($composer_phar)
-            );
-
-            exec($command, $output, $return_var);
-            error_log('Lexhoy Despachos - Output de Composer: ' . print_r($output, true));
-
-            if ($return_var !== 0) {
-                throw new Exception('Error al ejecutar Composer install. Código de retorno: ' . $return_var);
-            }
-
-            // Verificar que el autoloader se creó correctamente
-            if (!file_exists($autoloader)) {
-                throw new Exception('El autoloader no se creó correctamente después de la instalación');
-            }
-        }
-
         // Crear la página de búsqueda si no existe
         $search_page = get_page_by_path('buscar-despachos');
         if (!$search_page) {
@@ -1264,8 +1189,6 @@ function lexhoy_despachos_activate() {
 
         // Limpiar las reglas de reescritura
         flush_rewrite_rules();
-
-        error_log('Lexhoy Despachos - Activación completada exitosamente');
 
     } catch (Exception $e) {
         error_log('Lexhoy Despachos Error en la activación: ' . $e->getMessage());
