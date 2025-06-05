@@ -1211,7 +1211,9 @@ function lexhoy_despachos_activate() {
         $composer_installer = new Lexhoy_Composer_Installer();
         
         // Verificar requisitos
-        $requirements = $composer_installer->check_requirements();
+        $check_result = $composer_installer->check_requirements();
+        $requirements = $check_result['requirements'];
+        $diagnostic = $check_result['diagnostic'];
         
         // Verificar si hay requisitos no cumplidos
         $missing_requirements = array_filter($requirements, function($value) {
@@ -1219,29 +1221,41 @@ function lexhoy_despachos_activate() {
         });
         
         if (!empty($missing_requirements)) {
-            $error_message = 'Requisitos no cumplidos:<br>';
+            $error_message = '<h2>Requisitos no cumplidos:</h2>';
+            $error_message .= '<ul>';
+            
             foreach ($missing_requirements as $requirement => $value) {
                 switch ($requirement) {
                     case 'php_version':
-                        $error_message .= '- Versión de PHP debe ser 7.4 o superior<br>';
+                        $error_message .= '<li>Versión de PHP debe ser 7.2 o superior (Actual: ' . $diagnostic['php_version'] . ')</li>';
                         break;
                     case 'curl_enabled':
-                        $error_message .= '- cURL debe estar habilitado<br>';
+                        $error_message .= '<li>cURL debe estar habilitado</li>';
                         break;
                     case 'exec_enabled':
-                        $error_message .= '- La función exec() debe estar habilitada<br>';
+                        $error_message .= '<li>La función exec() debe estar habilitada</li>';
                         break;
                     case 'writable_dir':
-                        $error_message .= '- El directorio del plugin debe tener permisos de escritura<br>';
+                        $error_message .= '<li>El directorio del plugin debe tener permisos de escritura (Permisos actuales: ' . $diagnostic['plugin_dir_permissions'] . ')</li>';
                         break;
                 }
             }
-            wp_die($error_message);
+            
+            $error_message .= '</ul>';
+            $error_message .= '<h3>Información del sistema:</h3>';
+            $error_message .= '<ul>';
+            $error_message .= '<li>Sistema Operativo: ' . $diagnostic['os'] . '</li>';
+            $error_message .= '<li>Servidor: ' . $diagnostic['server_software'] . '</li>';
+            $error_message .= '<li>Límite de memoria: ' . $diagnostic['memory_limit'] . '</li>';
+            $error_message .= '<li>Tiempo máximo de ejecución: ' . $diagnostic['max_execution_time'] . ' segundos</li>';
+            $error_message .= '</ul>';
+            
+            wp_die($error_message, 'Error de Activación', array('back_link' => true));
         }
         
         // Intentar instalar Composer y sus dependencias
         if (!$composer_installer->check_composer()) {
-            wp_die('No se pudo instalar Composer o sus dependencias. Por favor, verifica los logs del servidor.');
+            wp_die('No se pudo instalar Composer o sus dependencias. Por favor, verifica los logs del servidor.', 'Error de Instalación', array('back_link' => true));
         }
         
         // Crear la página de búsqueda si no existe
@@ -1263,7 +1277,7 @@ function lexhoy_despachos_activate() {
         
     } catch (Exception $e) {
         error_log('Error en la activación del plugin: ' . $e->getMessage());
-        wp_die('Error al activar el plugin: ' . $e->getMessage());
+        wp_die('Error al activar el plugin: ' . $e->getMessage(), 'Error de Activación', array('back_link' => true));
     }
 }
 

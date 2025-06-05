@@ -45,6 +45,42 @@ class Lexhoy_Composer_Installer {
     }
 
     /**
+     * Verifica los requisitos del sistema
+     */
+    public function check_requirements() {
+        $requirements = array(
+            'php_version' => version_compare(PHP_VERSION, '7.2', '>='),
+            'curl_enabled' => function_exists('curl_init'),
+            'exec_enabled' => function_exists('exec'),
+            'writable_dir' => is_writable($this->plugin_dir),
+            'composer_exists' => file_exists($this->composer_phar_path),
+            'vendor_exists' => file_exists($this->vendor_path . '/autoload.php')
+        );
+
+        // Añadir información de diagnóstico
+        $diagnostic_info = array(
+            'php_version' => PHP_VERSION,
+            'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+            'os' => PHP_OS,
+            'max_execution_time' => ini_get('max_execution_time'),
+            'memory_limit' => ini_get('memory_limit'),
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size'),
+            'plugin_dir' => $this->plugin_dir,
+            'plugin_dir_writable' => is_writable($this->plugin_dir),
+            'plugin_dir_permissions' => substr(sprintf('%o', fileperms($this->plugin_dir)), -4)
+        );
+
+        // Registrar información de diagnóstico
+        error_log('Lexhoy Despachos - Información de diagnóstico: ' . print_r($diagnostic_info, true));
+
+        return array(
+            'requirements' => $requirements,
+            'diagnostic' => $diagnostic_info
+        );
+    }
+
+    /**
      * Instala Composer
      */
     private function install_composer() {
@@ -142,21 +178,5 @@ class Lexhoy_Composer_Installer {
             error_log('Error al ejecutar composer install: ' . $e->getMessage());
             throw $e;
         }
-    }
-
-    /**
-     * Verifica los requisitos del sistema
-     */
-    public function check_requirements() {
-        $requirements = array(
-            'php_version' => version_compare(PHP_VERSION, '7.4', '>='),
-            'curl_enabled' => function_exists('curl_init'),
-            'exec_enabled' => function_exists('exec'),
-            'writable_dir' => is_writable($this->plugin_dir),
-            'composer_exists' => file_exists($this->composer_phar_path),
-            'vendor_exists' => file_exists($this->vendor_path . '/autoload.php')
-        );
-
-        return $requirements;
     }
 } 
