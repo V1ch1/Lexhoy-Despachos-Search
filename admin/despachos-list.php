@@ -3,31 +3,41 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Incluir el autoloader de Composer
+$autoloader = dirname(dirname(__FILE__)) . '/vendor/autoload.php';
+if (!file_exists($autoloader)) {
+    echo '<div class="error"><p>Error: No se encontró el autoloader de Composer en: ' . esc_html($autoloader) . '</p></div>';
+    return;
+}
+
+require_once $autoloader;
+
 try {
-    // Incluir el autoloader de Composer
-    $autoloader = dirname(dirname(__FILE__)) . '/vendor/autoload.php';
-    if (!file_exists($autoloader)) {
-        throw new Exception('No se encontró el autoloader de Composer. Por favor, desactive y vuelva a activar el plugin.');
-    }
-
-    require_once $autoloader;
-
-    // Verificar que la clase de Algolia existe
-    if (!class_exists('\\Algolia\\AlgoliaSearch\\Api\\SearchClient')) {
-        throw new Exception('La clase SearchClient de Algolia no está disponible. Por favor, desactive y vuelva a activar el plugin.');
-    }
-
     // Obtener los datos de Algolia
     $settings = get_option('lexhoy_despachos_settings');
     if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
-        throw new Exception('Por favor, configure las credenciales de Algolia en la página de configuración.');
+        echo '<div class="error"><p>Error: Por favor, configure las credenciales de Algolia en la página de configuración.</p></div>';
+        return;
     }
 
-    // Crear el cliente de Algolia
+    // Verificar que la clase existe
+    if (!class_exists('\\Algolia\\AlgoliaSearch\\Api\\SearchClient')) {
+        echo '<div class="error"><p>Error: La clase SearchClient de Algolia no está disponible. Por favor, verifique la instalación de Composer.</p></div>';
+        echo '<div class="error"><p>Ruta del autoloader: ' . esc_html($autoloader) . '</p></div>';
+        echo '<div class="error"><p>¿Existe el autoloader? ' . (file_exists($autoloader) ? 'Sí' : 'No') . '</p></div>';
+        echo '<div class="error"><p>Directorio actual: ' . esc_html(__DIR__) . '</p></div>';
+        return;
+    }
+
     $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
         $settings['algolia_app_id'],
         $settings['algolia_admin_api_key']
     );
+
+    if (!$client) {
+        echo '<div class="error"><p>Error: No se pudo crear el cliente de Algolia.</p></div>';
+        return;
+    }
 
     // Obtener parámetros de búsqueda
     $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
@@ -46,7 +56,8 @@ try {
     $results = $client->searchSingleIndex('lexhoy_despachos_formatted', $search_params);
 
     if (!isset($results['hits'])) {
-        throw new Exception('No se pudieron obtener los resultados de Algolia.');
+        echo '<div class="error"><p>Error: No se pudieron obtener los resultados de Algolia.</p></div>';
+        return;
     }
 
     // Calcular el total de páginas
@@ -54,23 +65,7 @@ try {
     $total_pages = ceil($total_hits / $hits_per_page);
 
 } catch (Exception $e) {
-    echo '<div class="wrap lexhoy-despachos-admin">';
-    echo '<h1>Listado de Despachos</h1>';
-    echo '<div class="error"><p>' . esc_html($e->getMessage()) . '</p></div>';
-    
-    // Mostrar información de depuración si es necesario
-    if (WP_DEBUG) {
-        echo '<div class="notice notice-info">';
-        echo '<p><strong>Información de depuración:</strong></p>';
-        echo '<ul>';
-        echo '<li>Ruta del autoloader: ' . esc_html($autoloader ?? 'No definida') . '</li>';
-        echo '<li>¿Existe el autoloader? ' . (isset($autoloader) && file_exists($autoloader) ? 'Sí' : 'No') . '</li>';
-        echo '<li>Directorio actual: ' . esc_html(__DIR__) . '</li>';
-        echo '</ul>';
-        echo '</div>';
-    }
-    
-    echo '</div>';
+    echo '<div class="error"><p>Error al conectar con Algolia: ' . esc_html($e->getMessage()) . '</p></div>';
     return;
 }
 ?>

@@ -1,17 +1,38 @@
-# Archivos de sistema
+# Archivos del sistema
 .DS_Store
 Thumbs.db
+
+# Archivos de IDE/editores
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de dependencias
+/vendor/
+node_modules/
+composer.phar
+composer.lock
 
 # Archivos de entorno
 .env
 .env.*
 !.env.example
 
-# Archivos de IDE
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
+# Archivos de logs
+*.log
+error_log
+debug.log
+
+# Archivos de caché
+*.cache
+.cache/
+
+# Archivos de compilación
+*.zip
+*.tar.gz
+dist/
+build/
 
 # Archivos de WordPress
 wp-config.php
@@ -24,28 +45,4 @@ wp-content/upgrade/
 wp-content/uploads/
 wp-content/mu-plugins/
 wp-content/wp-cache-config.php
-wp-content/plugins/hello.php
-
-# Archivos de desarrollo
-node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-
-# Archivos de log
-*.log
-debug.log
-
-# Archivos temporales
-*.tmp
-*.temp
-*.swp
-*.swo
-
-# Archivos de backup
-*.bak
-*.backup
-*~
-
-# Archivos de configuración local
-wp-config-local.php 
+wp-content/plugins/hello.php 

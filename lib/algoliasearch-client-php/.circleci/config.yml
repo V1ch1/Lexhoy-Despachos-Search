@@ -12,7 +12,7 @@ executors:
         description: "PHP version tag"
         type: string
     docker:
-        - image: circleci/php:<<parameters.version>>
+        - image: cimg/php:<<parameters.version>>
 
 jobs:
   test:
@@ -31,8 +31,9 @@ jobs:
     steps:
       - checkout
 
-      - run: sudo apt update
-      - run: sudo docker-php-ext-install zip
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y php-zip
+
 
       # Download and cache dependencies
       - restore_cache:
@@ -61,13 +62,14 @@ jobs:
       - run:
           name: Get API Key Dealer client
           command: |
-            if [ "$CIRCLE_PR_REPONAME" ]; then
-              curl -s https://algoliasearch-client-keygen.herokuapp.com | sh >> $BASH_ENV
+            if [ "${CIRCLE_PR_REPONAME}" ]
+            then
+              curl -s https://algoliasearch-client-keygen.herokuapp.com | bash >> "$BASH_ENV"
             fi
 
       - run:
           name: Check code styles
-          command: vendor/bin/php-cs-fixer fix -v --dry-run
+          command: PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix -v --dry-run
 
       # Run tests with phpunit
       #
@@ -82,7 +84,7 @@ jobs:
             export CI_BUILD_NUM=$CIRCLE_BUILD_NUM
             if [ -z ${CIRCLE_PR_REPONAME+x} ]
             then
-              if [ "<<parameters.version>>" == "latest" && "<<parameters.http_client>>" == "guzzlehttp/guzzle:"^7.0"" ]
+              if [ "<<parameters.version>>" == "latest" ] && [ "<<parameters.http_client>>" == "guzzlehttp/guzzle:"^7.0"" ]
               then
                  php vendor/bin/phpunit
               else
@@ -92,7 +94,7 @@ jobs:
               export CI_PROJ_USERNAME=$CIRCLE_PR_USERNAME
               export CI_PROJ_REPONAME=$CIRCLE_PR_REPONAME
 
-              if [ "<<parameters.version>>" == "latest" && "<<parameters.http_client>>" == "guzzlehttp/guzzle:"^7.0"" ]
+              if [ "<<parameters.version>>" == "latest" ] && [ "<<parameters.http_client>>" == "guzzlehttp/guzzle:"^7.0"" ]
               then
                  php vendor/bin/phpunit
               else
@@ -109,8 +111,8 @@ workflows:
   workflow:
     jobs:
       - test:
-          name: 'Guzzle 7 - PHP latest'
-          version: "latest"
+          name: 'Guzzle 7 - PHP 8.1'
+          version: "8.1"
           http_client: guzzlehttp/guzzle:"^7.0"
       - test:
           name: 'Guzzle 7 - PHP 8.0'
@@ -120,10 +122,9 @@ workflows:
           name: 'Guzzle 7 - PHP 7.4'
           version: "7.4"
           http_client: guzzlehttp/guzzle:"^7.0"
-
       - test:
-          name: 'Guzzle 6 - PHP latest'
-          version: "latest"
+          name: 'Guzzle 6 - PHP 8.1'
+          version: "8.1"
           http_client: guzzlehttp/guzzle:"^6.0"
       - test:
           name: 'Guzzle 6 - PHP 8.0'
@@ -137,10 +138,9 @@ workflows:
           name: 'Guzzle 6 - PHP 7.2'
           version: "7.2"
           http_client: guzzlehttp/guzzle:"^6.0"
-
       - test:
-          name: 'Legacy client - PHP latest'
-          version: "latest"
+          name: 'Legacy client - PHP 8.1'
+          version: "8.1"
           http_client: legacy
       - test:
           name: 'Legacy client - PHP 8.0'
