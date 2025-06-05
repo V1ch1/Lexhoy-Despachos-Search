@@ -1199,52 +1199,78 @@ function lexhoy_despachos_init() {
 
 // Función para ejecutar composer install
 function lexhoy_despachos_activate() {
-    // Verificar si Composer está instalado
-    if (!file_exists(__DIR__ . '/vendor/autoload.php')) {
-        // Verificar si composer.phar existe
-        if (!file_exists(__DIR__ . '/composer.phar')) {
-            // Descargar Composer
-            $composer_installer = file_get_contents('https://getcomposer.org/installer');
-            if ($composer_installer === false) {
-                error_log('Lexhoy Despachos Error: No se pudo descargar el instalador de Composer');
-                return;
+    try {
+        $plugin_dir = dirname(__FILE__);
+        $composer_phar = $plugin_dir . '/composer.phar';
+        $autoloader = $plugin_dir . '/vendor/autoload.php';
+
+        // Verificar si el autoloader ya existe
+        if (!file_exists($autoloader)) {
+            error_log('Lexhoy Despachos - Iniciando instalación de Composer');
+
+            // Descargar Composer si no existe
+            if (!file_exists($composer_phar)) {
+                error_log('Lexhoy Despachos - Descargando Composer');
+                $composer_installer = file_get_contents('https://getcomposer.org/installer');
+                if ($composer_installer === false) {
+                    throw new Exception('No se pudo descargar el instalador de Composer');
+                }
+                if (file_put_contents($composer_phar, $composer_installer) === false) {
+                    throw new Exception('No se pudo guardar el instalador de Composer');
+                }
+                chmod($composer_phar, 0755);
             }
-            file_put_contents(__DIR__ . '/composer.phar', $composer_installer);
+
+            // Ejecutar Composer install
+            error_log('Lexhoy Despachos - Ejecutando Composer install');
+            $command = sprintf(
+                'cd %s && php %s install --no-interaction --no-dev --optimize-autoloader',
+                escapeshellarg($plugin_dir),
+                escapeshellarg($composer_phar)
+            );
+
+            exec($command, $output, $return_var);
+            error_log('Lexhoy Despachos - Output de Composer: ' . print_r($output, true));
+
+            if ($return_var !== 0) {
+                throw new Exception('Error al ejecutar Composer install. Código de retorno: ' . $return_var);
+            }
+
+            // Verificar que el autoloader se creó correctamente
+            if (!file_exists($autoloader)) {
+                throw new Exception('El autoloader no se creó correctamente después de la instalación');
+            }
         }
 
-        // Ejecutar Composer install
-        $command = 'php ' . __DIR__ . '/composer.phar install --no-interaction --no-dev';
-        exec($command, $output, $return_var);
+        // Crear la página de búsqueda si no existe
+        $search_page = get_page_by_path('buscar-despachos');
+        if (!$search_page) {
+            $page_id = wp_insert_post(array(
+                'post_title' => 'Buscar Despachos',
+                'post_content' => '[lexhoy_despachos_search]',
+                'post_status' => 'publish',
+                'post_type' => 'page',
+                'post_name' => 'buscar-despachos'
+            ));
 
-        if ($return_var !== 0) {
-            error_log('Lexhoy Despachos Error: Error al ejecutar Composer install');
-            error_log('Output: ' . print_r($output, true));
-            return;
+            if (!is_wp_error($page_id)) {
+                update_option('lexhoy_despachos_search_page_id', $page_id);
+            }
         }
+
+        // Registrar el Custom Post Type
+        $plugin = LexhoyDespachos::get_instance();
+        $plugin->register_despacho_post_type();
+
+        // Limpiar las reglas de reescritura
+        flush_rewrite_rules();
+
+        error_log('Lexhoy Despachos - Activación completada exitosamente');
+
+    } catch (Exception $e) {
+        error_log('Lexhoy Despachos Error en la activación: ' . $e->getMessage());
+        wp_die('Error al activar el plugin: ' . $e->getMessage());
     }
-
-    // Crear la página de búsqueda si no existe
-    $search_page = get_page_by_path('buscar-despachos');
-    if (!$search_page) {
-        $page_id = wp_insert_post(array(
-            'post_title' => 'Buscar Despachos',
-            'post_content' => '[lexhoy_despachos_search]',
-            'post_status' => 'publish',
-            'post_type' => 'page',
-            'post_name' => 'buscar-despachos'
-        ));
-
-        if (!is_wp_error($page_id)) {
-            update_option('lexhoy_despachos_search_page_id', $page_id);
-        }
-    }
-
-    // Registrar el Custom Post Type
-    $plugin = LexhoyDespachos::get_instance();
-    $plugin->register_despacho_post_type();
-
-    // Limpiar las reglas de reescritura
-    flush_rewrite_rules();
 }
 
 // Registrar la función de activación
