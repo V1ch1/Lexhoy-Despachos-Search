@@ -39,6 +39,9 @@ define('LEXHOY_DESPACHOS_PLUGIN_URL', plugins_url('', __FILE__));
 define('LEXHOY_DESPACHOS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('LEXHOY_DESPACHOS_GITHUB_REPO', 'V1ch1/Lexhoy-Despachos-Search');
 
+// Incluir el instalador de Composer
+require_once plugin_dir_path(__FILE__) . 'includes/class-composer-installer.php';
+
 // Clase para manejar las actualizaciones
 class LexhoyDespachosUpdater {
     private $file;
@@ -1197,31 +1200,67 @@ function lexhoy_despachos_init() {
     }
 }
 
-// Función para ejecutar composer install
+// Verificar Composer al activar el plugin
+register_activation_hook(__FILE__, 'lexhoy_despachos_activate');
 function lexhoy_despachos_activate() {
     try {
-        $plugin_dir = dirname(__FILE__);
-        $composer_path = $plugin_dir . '/vendor/autoload.php';
+        // Incluir el instalador de Composer
+        require_once plugin_dir_path(__FILE__) . 'includes/class-composer-installer.php';
         
-        // Si no existe el autoloader, ejecutar composer install
-        if (!file_exists($composer_path)) {
-            // Verificar si composer está instalado
-            exec('composer --version', $output, $return_var);
-            
-            if ($return_var === 0) {
-                // Ejecutar composer install
-                $command = 'cd ' . escapeshellarg($plugin_dir) . ' && composer install --no-dev --optimize-autoloader';
-                exec($command, $output, $return_var);
-                
-                if ($return_var !== 0) {
-                    error_log('Error al ejecutar composer install: ' . implode("\n", $output));
-                    wp_die('Error al instalar las dependencias del plugin. Por favor, ejecuta manualmente "composer install" en la carpeta del plugin.');
+        // Crear instancia del instalador
+        $composer_installer = new Lexhoy_Composer_Installer();
+        
+        // Verificar requisitos
+        $requirements = $composer_installer->check_requirements();
+        
+        // Verificar si hay requisitos no cumplidos
+        $missing_requirements = array_filter($requirements, function($value) {
+            return $value === false;
+        });
+        
+        if (!empty($missing_requirements)) {
+            $error_message = 'Requisitos no cumplidos:<br>';
+            foreach ($missing_requirements as $requirement => $value) {
+                switch ($requirement) {
+                    case 'php_version':
+                        $error_message .= '- Versión de PHP debe ser 7.4 o superior<br>';
+                        break;
+                    case 'curl_enabled':
+                        $error_message .= '- cURL debe estar habilitado<br>';
+                        break;
+                    case 'exec_enabled':
+                        $error_message .= '- La función exec() debe estar habilitada<br>';
+                        break;
+                    case 'writable_dir':
+                        $error_message .= '- El directorio del plugin debe tener permisos de escritura<br>';
+                        break;
                 }
-            } else {
-                error_log('Composer no está instalado en el servidor');
-                wp_die('Composer no está instalado en el servidor. Por favor, instala Composer y ejecuta "composer install" en la carpeta del plugin.');
             }
+            wp_die($error_message);
         }
+        
+        // Intentar instalar Composer y sus dependencias
+        if (!$composer_installer->check_composer()) {
+            wp_die('No se pudo instalar Composer o sus dependencias. Por favor, verifica los logs del servidor.');
+        }
+        
+        // Crear la página de búsqueda si no existe
+        $search_page = get_page_by_path('buscador-de-despachos');
+        if (!$search_page) {
+            $page_data = array(
+                'post_title'    => 'Buscador de Despachos',
+                'post_name'     => 'buscador-de-despachos',
+                'post_status'   => 'publish',
+                'post_type'     => 'page',
+                'post_content'  => '[lexhoy_despachos_search]',
+                'post_author'   => 1
+            );
+            wp_insert_post($page_data);
+        }
+        
+        // Limpiar las reglas de reescritura
+        flush_rewrite_rules();
+        
     } catch (Exception $e) {
         error_log('Error en la activación del plugin: ' . $e->getMessage());
         wp_die('Error al activar el plugin: ' . $e->getMessage());
