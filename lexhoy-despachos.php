@@ -1199,33 +1199,52 @@ function lexhoy_despachos_init() {
 
 // Función para ejecutar composer install
 function lexhoy_despachos_activate() {
-    try {
-        $plugin_dir = dirname(__FILE__);
-        $composer_path = $plugin_dir . '/vendor/autoload.php';
-        
-        // Si no existe el autoloader, ejecutar composer install
-        if (!file_exists($composer_path)) {
-            // Verificar si composer está instalado
-            exec('composer --version', $output, $return_var);
-            
-            if ($return_var === 0) {
-                // Ejecutar composer install
-                $command = 'cd ' . escapeshellarg($plugin_dir) . ' && composer install --no-dev --optimize-autoloader';
-                exec($command, $output, $return_var);
-                
-                if ($return_var !== 0) {
-                    error_log('Error al ejecutar composer install: ' . implode("\n", $output));
-                    wp_die('Error al instalar las dependencias del plugin. Por favor, ejecuta manualmente "composer install" en la carpeta del plugin.');
-                }
-            } else {
-                error_log('Composer no está instalado en el servidor');
-                wp_die('Composer no está instalado en el servidor. Por favor, instala Composer y ejecuta "composer install" en la carpeta del plugin.');
+    // Verificar si Composer está instalado
+    if (!file_exists(__DIR__ . '/vendor/autoload.php')) {
+        // Verificar si composer.phar existe
+        if (!file_exists(__DIR__ . '/composer.phar')) {
+            // Descargar Composer
+            $composer_installer = file_get_contents('https://getcomposer.org/installer');
+            if ($composer_installer === false) {
+                error_log('Lexhoy Despachos Error: No se pudo descargar el instalador de Composer');
+                return;
             }
+            file_put_contents(__DIR__ . '/composer.phar', $composer_installer);
         }
-    } catch (Exception $e) {
-        error_log('Error en la activación del plugin: ' . $e->getMessage());
-        wp_die('Error al activar el plugin: ' . $e->getMessage());
+
+        // Ejecutar Composer install
+        $command = 'php ' . __DIR__ . '/composer.phar install --no-interaction --no-dev';
+        exec($command, $output, $return_var);
+
+        if ($return_var !== 0) {
+            error_log('Lexhoy Despachos Error: Error al ejecutar Composer install');
+            error_log('Output: ' . print_r($output, true));
+            return;
+        }
     }
+
+    // Crear la página de búsqueda si no existe
+    $search_page = get_page_by_path('buscar-despachos');
+    if (!$search_page) {
+        $page_id = wp_insert_post(array(
+            'post_title' => 'Buscar Despachos',
+            'post_content' => '[lexhoy_despachos_search]',
+            'post_status' => 'publish',
+            'post_type' => 'page',
+            'post_name' => 'buscar-despachos'
+        ));
+
+        if (!is_wp_error($page_id)) {
+            update_option('lexhoy_despachos_search_page_id', $page_id);
+        }
+    }
+
+    // Registrar el Custom Post Type
+    $plugin = LexhoyDespachos::get_instance();
+    $plugin->register_despacho_post_type();
+
+    // Limpiar las reglas de reescritura
+    flush_rewrite_rules();
 }
 
 // Registrar la función de activación

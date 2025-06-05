@@ -1,6 +1,6 @@
 {
   "name": "lexhoy/despachos-search",
-  "description": "Plugin de WordPress para buscar despachos de abogados integrado con Algolia",
+  "description": "Plugin para gestionar y buscar despachos de abogados integrado con Algolia",
   "type": "wordpress-plugin",
   "license": "MIT",
   "version": "2.2.0",
@@ -13,7 +13,8 @@
   ],
   "require": {
     "php": ">=7.4",
-    "algolia/algoliasearch-client-php": "^3.0"
+    "algolia/algoliasearch-client-php": "^3.0",
+    "composer/installers": "^2.0"
   },
   "autoload": {
     "psr-4": {
@@ -23,7 +24,10 @@
   "config": {
     "optimize-autoloader": true,
     "preferred-install": "dist",
-    "sort-packages": true
+    "sort-packages": true,
+    "allow-plugins": {
+      "composer/installers": true
+    }
   },
   "minimum-stability": "stable",
   "prefer-stable": true
