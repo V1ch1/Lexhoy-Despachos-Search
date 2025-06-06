@@ -96,8 +96,10 @@
 
 /* Cabecera de búsqueda */
 .search-header {
+  align-items: center;
   width: 100%;
-  min-height: 440px;
+  max-width: 1350px;
+  min-height: 320px;
   border: 1px solid #000000;
   border-bottom-width: 5px;
   position: relative;
@@ -319,13 +321,13 @@
   display: inline-flex;
   align-items: center;
   padding: 8px 15px;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 20px;
+  background-color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 14px;
   color: #333;
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
 }
 
 .filter-label:hover {
@@ -342,12 +344,13 @@
   margin-left: 8px;
   padding: 2px 8px;
   background-color: rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
+  border-radius: 0px !important;
   font-size: 12px;
 }
 
 .filter-item--selected .filter-count {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 0, 0, 0.2);
+  border-radius: 0px !important;
 }
 
 /* Responsive */
@@ -426,7 +429,7 @@
 }
 
 .ais-Hits-item {
-  width: 100%;
+  width: 150%;
 }
 
 /* Tarjeta de despacho */

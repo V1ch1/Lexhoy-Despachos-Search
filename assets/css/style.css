@@ -30,7 +30,7 @@
 }
 
 #searchbox .ais-SearchBox-input:focus {
-  border-color: #007bff;
+  border-color: #ff0000;
   outline: none;
 }
 
@@ -59,10 +59,14 @@
 
 .ais-RefinementList-item {
   margin-bottom: 8px;
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
 }
 
 .ais-RefinementList-checkbox {
   margin-right: 8px;
+  border: 1px solid #000000;
+  border-bottom-width: 5px;
 }
 
 .ais-RefinementList-label {
@@ -98,7 +102,6 @@
 .lexhoy-despacho-card {
   background: #fff;
   border: 1px solid #ddd;
-  border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
