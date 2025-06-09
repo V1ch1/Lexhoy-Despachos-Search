@@ -92,8 +92,9 @@
   font-family: "Inter", Helvetica, Arial, sans-serif;
   padding: 0;
   box-sizing: border-box;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Cabecera de búsqueda */
@@ -101,12 +102,12 @@
   width: 100%;
   max-width: 1250px;
   min-height: 320px;
-  border: 1px solid #000000;
-  border-bottom-width: 5px;
   position: relative;
   padding: 20px 40px;
   box-sizing: border-box;
-  margin-bottom: 20px;
+  margin-bottom: 40px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Título */
@@ -130,8 +131,8 @@
   border-bottom-width: 5px;
   margin-top: 20px;
   box-sizing: border-box;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 0;
 }
 
 /* Letras del alfabeto */
@@ -139,19 +140,22 @@
   font-size: 40px;
   color: #000000;
   cursor: pointer;
-  padding: 0 5px;
+  padding: 0;
   transition: all 0.3s ease;
-  flex: 0 0 auto;
+  flex: 1;
+  text-align: center;
 }
 
 .alphabet-letter:hover {
   color: #e10000;
+  background-color: #f8f9fa;
 }
 
 .alphabet-letter.active {
   color: #e10000;
   font-weight: bold;
   transform: scale(1.1);
+  background-color: #f8f9fa;
 }
 
 /* Contenedor de búsqueda */
@@ -223,6 +227,9 @@
   gap: 20px;
   padding: 0 40px;
   box-sizing: border-box;
+  width: 100%;
+  max-width: 1250px;
+  margin: 0 auto;
 }
 
 /* Sidebar de filtros */
@@ -525,5 +532,20 @@
 @media (max-width: 768px) {
   .ais-Hits {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Para pantallas muy anchas */
+@media (min-width: 1400px) {
+  .search-header {
+    max-width: 1250px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .search-content {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 15px;
   }
 }

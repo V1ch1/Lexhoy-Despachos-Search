@@ -450,75 +450,6 @@ class LexhoyDespachos {
         return $sanitized;
     }
 
-    public function admin_page() {
-        try {
-            if (!current_user_can('manage_options')) {
-                return;
-            }
-            
-            // Mostrar mensajes de error/éxito
-            settings_errors('lexhoy_despachos_messages');
-            
-            $admin_page_path = dirname(__FILE__) . '/admin/admin-page.php';
-            if (file_exists($admin_page_path)) {
-                require_once $admin_page_path;
-            } else {
-                echo '<div class="error"><p>Error: No se encontró la página de administración en: ' . esc_html($admin_page_path) . '</p></div>';
-                // Mostrar el formulario directamente si no se encuentra el archivo
-                ?>
-                <div class="wrap lexhoy-despachos-admin">
-                    <h1>Lexhoy Despachos</h1>
-                    <div class="card">
-                        <h2>Configuración de Algolia</h2>
-                        <form method="post" action="options.php">
-                            <?php
-                            settings_fields('lexhoy_despachos_options');
-                            do_settings_sections('lexhoy_despachos_options');
-                            ?>
-                            <table class="form-table">
-                                <tr>
-                                    <th scope="row">
-                                        <label for="algolia_app_id">Algolia Application ID</label>
-                                    </th>
-                                    <td>
-                                        <input type="text" 
-                                               id="algolia_app_id" 
-                                               name="lexhoy_despachos_settings[algolia_app_id]" 
-                                               value="<?php echo esc_attr($this->settings['algolia_app_id'] ?? ''); ?>" 
-                                               class="regular-text">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th scope="row">
-                                        <label for="algolia_api_key">Algolia API Key</label>
-                                    </th>
-                                    <td>
-                                        <input type="text" 
-                                               id="algolia_api_key" 
-                                               name="lexhoy_despachos_settings[algolia_api_key]" 
-                                               value="<?php echo esc_attr($this->settings['algolia_api_key'] ?? ''); ?>" 
-                                               class="regular-text">
-                                    </td>
-                                </tr>
-                            </table>
-                            <?php submit_button('Guardar configuración'); ?>
-                        </form>
-                    </div>
-
-                    <div class="card">
-                        <h2>Uso del Plugin</h2>
-                        <p>Para mostrar el buscador de despachos, usa el siguiente shortcode en cualquier página o post:</p>
-                        <code>[lexhoy_despachos_search]</code>
-                    </div>
-                </div>
-                <?php
-            }
-        } catch (Exception $e) {
-            error_log('Lexhoy Despachos Error: ' . $e->getMessage());
-            echo '<div class="error"><p>Error: ' . esc_html($e->getMessage()) . '</p></div>';
-        }
-    }
-
     public function enqueue_scripts() {
         try {
             // Obtener la URL base del plugin
@@ -554,6 +485,48 @@ class LexhoyDespachos {
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('lexhoy_despachos_nonce')
             ));
+
+            // Agregar Bootstrap CSS
+            wp_enqueue_style(
+                'bootstrap',
+                'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
+                array(),
+                '5.3.2'
+            );
+
+            // Agregar Bootstrap JS y Popper.js
+            wp_enqueue_script(
+                'popper',
+                'https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js',
+                array(),
+                '2.11.8',
+                true
+            );
+
+            wp_enqueue_script(
+                'bootstrap',
+                'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js',
+                array('jquery', 'popper'),
+                '5.3.2',
+                true
+            );
+
+            // Estilos personalizados del plugin
+            wp_enqueue_style(
+                'lexhoy-despachos-admin',
+                LEXHOY_DESPACHOS_PLUGIN_URL . '/css/admin.css',
+                array('bootstrap'),
+                LEXHOY_DESPACHOS_VERSION
+            );
+
+            // Scripts personalizados del plugin
+            wp_enqueue_script(
+                'lexhoy-despachos-admin',
+                LEXHOY_DESPACHOS_PLUGIN_URL . '/js/admin.js',
+                array('jquery', 'bootstrap'),
+                LEXHOY_DESPACHOS_VERSION,
+                true
+            );
 
             // Solo cargar los scripts de Algolia en la página de búsqueda
             if (is_page('buscador-de-despachos')) {
