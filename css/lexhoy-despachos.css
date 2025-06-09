@@ -98,9 +98,8 @@
 
 /* Cabecera de búsqueda */
 .search-header {
-  align-items: center;
   width: 100%;
-  max-width: 1350px;
+  max-width: 1250px;
   min-height: 320px;
   border: 1px solid #000000;
   border-bottom-width: 5px;
@@ -431,7 +430,9 @@
 }
 
 .ais-Hits-item {
-  width: 150%;
+  width: 210%;
+  max-width: 210%;
+  min-width: 210%;
 }
 
 /* Tarjeta de despacho */
