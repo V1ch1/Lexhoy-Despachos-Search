@@ -92,6 +92,8 @@
   font-family: "Inter", Helvetica, Arial, sans-serif;
   padding: 0;
   box-sizing: border-box;
+  display: grid;
+  place-items: center;
 }
 
 /* Cabecera de búsqueda */
