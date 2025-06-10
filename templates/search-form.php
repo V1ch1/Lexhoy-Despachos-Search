@@ -51,7 +51,9 @@ if (!defined('ABSPATH')) {
 <script type="text/html" id="hit-template">
     <div class="hit">
         <div class="hit-content">
-            <h2 class="hit-name">{{{_highlightResult.nombre.value}}}</h2>
+            <h2 class="hit-name">
+                <a href="/despacho/{{objectID}}">{{{_highlightResult.nombre.value}}}</a>
+            </h2>
             <div class="hit-address">
                 <p>{{{_highlightResult.direccion.value}}}</p>
                 <p>{{{_highlightResult.localidad.value}}}, {{{_highlightResult.provincia.value}}}</p>
@@ -74,6 +76,7 @@ if (!defined('ABSPATH')) {
                 </ul>
             </div>
             {{/especialidades}}
+            <a href="/despacho/{{objectID}}" class="despacho-link">Ver más detalles</a>
         </div>
     </div>
 </script>

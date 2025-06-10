@@ -12,6 +12,20 @@ if (!file_exists($autoloader)) {
 
 require_once $autoloader;
 
+// Enqueue de estilos y scripts necesarios
+function lexhoy_despachos_admin_scripts() {
+    // Bootstrap CSS
+    wp_enqueue_style('bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
+    
+    // Font Awesome
+    wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+    
+    // Bootstrap JS y Popper.js
+    wp_enqueue_script('popper', 'https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js', array(), null, true);
+    wp_enqueue_script('bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js', array('jquery', 'popper'), null, true);
+}
+add_action('admin_enqueue_scripts', 'lexhoy_despachos_admin_scripts');
+
 try {
     // Obtener el ID del despacho
     $despacho_id = isset($_GET['id']) ? sanitize_text_field($_GET['id']) : '';
@@ -33,16 +47,19 @@ try {
     );
 
     // Obtener los datos del despacho
-    $despacho = $client->getObject('lexhoy_despachos_formatted', $despacho_id);
+    $results = $client->searchSingleIndex('lexhoy_despachos_formatted', [
+        'filters' => 'objectID:' . $despacho_id,
+        'hitsPerPage' => 1
+    ]);
 
-    if (!$despacho) {
+    if (!$results['hits'][0]) {
         echo '<div class="error"><p>Error: No se encontró el despacho.</p></div>';
         return;
     }
 
     // Obtener las áreas de práctica del despacho actual
     $todas_areas = get_option('lexhoy_areas_practica', []);
-    $areas_seleccionadas = isset($despacho['areas_practica']) ? (array)$despacho['areas_practica'] : [];
+    $areas_seleccionadas = isset($results['hits'][0]['areas_practica']) ? (array)$results['hits'][0]['areas_practica'] : [];
     
     // Si hay un mensaje de actualización, recargar los datos
     if (isset($_GET['updated']) && $_GET['updated'] == '1') {
@@ -51,12 +68,15 @@ try {
         
         try {
             // Obtener los datos actualizados
-            $despacho = $client->getObject('lexhoy_despachos_formatted', $despacho_id);
-            if ($despacho) {
-                $areas_seleccionadas = isset($despacho['areas_practica']) ? (array)$despacho['areas_practica'] : [];
+            $results = $client->searchSingleIndex('lexhoy_despachos_formatted', [
+                'filters' => 'objectID:' . $despacho_id,
+                'hitsPerPage' => 1
+            ]);
+            if ($results['hits'][0]) {
+                $areas_seleccionadas = isset($results['hits'][0]['areas_practica']) ? (array)$results['hits'][0]['areas_practica'] : [];
                 
                 // Debug para verificar los datos
-                error_log('Despacho actualizado: ' . print_r($despacho, true));
+                error_log('Despacho actualizado: ' . print_r($results['hits'][0], true));
                 error_log('Áreas seleccionadas actualizadas: ' . print_r($areas_seleccionadas, true));
             }
         } catch (Exception $e) {
@@ -66,205 +86,183 @@ try {
     
     sort($todas_areas);
 
+    $slug = $results['hits'][0]['slug'] ?? '';
+
 } catch (Exception $e) {
     echo '<div class="error"><p>Error al conectar con Algolia: ' . esc_html($e->getMessage()) . '</p></div>';
     return;
 }
 ?>
 
-<div class="lexhoy-despachos-search">
-    <div class="search-header container-fluid px-0">
-        <h1 class="mb-4">Editar Despacho</h1>
-    </div>
-    <div class="search-content container">
-        <?php if (isset($_GET['updated']) && $_GET['updated'] == '1'): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                Los cambios se han guardado correctamente.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
+<div class="wrap lexhoy-despachos-admin">
+    <h1 class="wp-heading-inline">Editar Despacho</h1>
+    <hr class="wp-header-end">
 
-        <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" class="despacho-form">
-            <?php wp_nonce_field('lexhoy_despachos_edit', 'lexhoy_despachos_nonce'); ?>
-            <input type="hidden" name="action" value="lexhoy_despachos_update">
-            <input type="hidden" name="objectID" value="<?php echo esc_attr($despacho['objectID']); ?>">
-            <input type="hidden" name="current_tab" id="current_tab" value="<?php echo esc_attr(isset($_GET['tab']) ? $_GET['tab'] : 'info-basica'); ?>">
+    <?php if (isset($_GET['updated']) && $_GET['updated'] == '1'): ?>
+        <div class="notice notice-success is-dismissible">
+            <p>Los cambios se han guardado correctamente.</p>
+        </div>
+    <?php endif; ?>
 
-            <ul class="nav nav-tabs mb-4" id="despachoTabs" role="tablist">
+    <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" class="despacho-form">
+        <?php wp_nonce_field('lexhoy_despachos_edit', 'lexhoy_despachos_nonce'); ?>
+        <input type="hidden" name="action" value="lexhoy_despachos_update">
+        <input type="hidden" name="objectID" value="<?php echo esc_attr($results['hits'][0]['objectID']); ?>">
+        <input type="hidden" name="current_tab" id="current_tab" value="<?php echo esc_attr(isset($_GET['tab']) ? $_GET['tab'] : 'info-basica'); ?>">
+
+        <!-- Navegación de pestañas -->
+        <div class="nav-tabs-wrapper">
+            <ul class="nav nav-tabs" id="despachoTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link <?php echo (!isset($_GET['tab']) || $_GET['tab'] === 'info-basica') ? 'active' : ''; ?>" 
                             id="info-basica-tab" 
                             data-bs-toggle="tab" 
                             data-bs-target="#info-basica" 
                             type="button" 
-                            role="tab">Información Básica</button>
+                            role="tab"
+                            aria-controls="info-basica"
+                            aria-selected="<?php echo (!isset($_GET['tab']) || $_GET['tab'] === 'info-basica') ? 'true' : 'false'; ?>">
+                        <i class="fas fa-info-circle"></i> Información Básica
+                    </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'areas-practica') ? 'active' : ''; ?>" 
-                            id="areas-practica-tab" 
+                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'contacto') ? 'active' : ''; ?>" 
+                            id="contacto-tab" 
                             data-bs-toggle="tab" 
-                            data-bs-target="#areas-practica" 
+                            data-bs-target="#contacto" 
                             type="button" 
-                            role="tab">Áreas de Práctica</button>
+                            role="tab"
+                            aria-controls="contacto"
+                            aria-selected="<?php echo (isset($_GET['tab']) && $_GET['tab'] === 'contacto') ? 'true' : 'false'; ?>">
+                        <i class="fas fa-address-card"></i> Contacto
+                    </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'horario') ? 'active' : ''; ?>" 
-                            id="horario-tab" 
+                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'areas') ? 'active' : ''; ?>" 
+                            id="areas-tab" 
                             data-bs-toggle="tab" 
-                            data-bs-target="#horario" 
+                            data-bs-target="#areas" 
                             type="button" 
-                            role="tab">Horario</button>
+                            role="tab"
+                            aria-controls="areas"
+                            aria-selected="<?php echo (isset($_GET['tab']) && $_GET['tab'] === 'areas') ? 'true' : 'false'; ?>">
+                        <i class="fas fa-briefcase"></i> Áreas y Especialidades
+                    </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'redes-sociales') ? 'active' : ''; ?>" 
-                            id="redes-sociales-tab" 
+                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'adicional') ? 'active' : ''; ?>" 
+                            id="adicional-tab" 
                             data-bs-toggle="tab" 
-                            data-bs-target="#redes-sociales" 
+                            data-bs-target="#adicional" 
                             type="button" 
-                            role="tab">Redes Sociales</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'info-adicional') ? 'active' : ''; ?>" 
-                            id="info-adicional-tab" 
-                            data-bs-toggle="tab" 
-                            data-bs-target="#info-adicional" 
-                            type="button" 
-                            role="tab">Información Adicional</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'estado') ? 'active' : ''; ?>" 
-                            id="estado-tab" 
-                            data-bs-toggle="tab" 
-                            data-bs-target="#estado" 
-                            type="button" 
-                            role="tab">Estado</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'equipo') ? 'active' : ''; ?>" 
-                            id="equipo-tab" 
-                            data-bs-toggle="tab" 
-                            data-bs-target="#equipo" 
-                            type="button" 
-                            role="tab">Equipo</button>
+                            role="tab"
+                            aria-controls="adicional"
+                            aria-selected="<?php echo (isset($_GET['tab']) && $_GET['tab'] === 'adicional') ? 'true' : 'false'; ?>">
+                        <i class="fas fa-plus-circle"></i> Información Adicional
+                    </button>
                 </li>
             </ul>
+        </div>
 
+        <!-- Contenido de las pestañas -->
+        <div class="tab-content-wrapper">
             <div class="tab-content" id="despachoTabsContent">
+                <!-- Pestaña Información Básica -->
                 <div class="tab-pane fade <?php echo (!isset($_GET['tab']) || $_GET['tab'] === 'info-basica') ? 'show active' : ''; ?>" 
                      id="info-basica" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Información Básica</h2>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="nombre" class="form-label">Nombre del Despacho</label>
-                                        <input type="text" id="nombre" name="nombre" value="<?php echo esc_attr($despacho['nombre']); ?>" class="form-control">
-                                    </div>
+                     role="tabpanel"
+                     aria-labelledby="info-basica-tab">
+                    <div class="tab-pane-content">
+                        <div class="form-section">
+                            <h2 class="section-title">Información Básica del Despacho</h2>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label for="nombre" class="form-label">Nombre del Despacho *</label>
+                                    <input type="text" id="nombre" name="nombre" value="<?php echo esc_attr($results['hits'][0]['nombre']); ?>" class="form-control" required>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="slug" class="form-label">URL Amigable (Slug)</label>
-                                        <input type="text" id="slug" name="slug" value="<?php echo esc_attr($despacho['slug'] ?? strtolower(str_replace(' ', '-', $despacho['nombre']))); ?>" class="form-control">
-                                        <div class="form-text">La URL amigable para este despacho. Si lo dejas vacío, se generará automáticamente a partir del nombre.</div>
-                                    </div>
+                                <div class="form-group col-md-6">
+                                    <label for="slug" class="form-label">URL Amigable (Slug)</label>
+                                    <input type="text" id="slug" name="slug" value="<?php echo esc_attr($results['hits'][0]['slug'] ?? strtolower(str_replace(' ', '-', $results['hits'][0]['nombre']))); ?>" class="form-control">
+                                    <small class="form-text">La URL amigable para este despacho. Si lo dejas vacío, se generará automáticamente a partir del nombre.</small>
                                 </div>
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="direccion" class="form-label">Dirección</label>
-                                        <input type="text" id="direccion" name="direccion" value="<?php echo esc_attr($despacho['direccion']); ?>" class="form-control">
-                                    </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="direccion" class="form-label">Dirección</label>
+                                    <input type="text" id="direccion" name="direccion" value="<?php echo esc_attr($results['hits'][0]['direccion']); ?>" class="form-control">
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="localidad" class="form-label">Localidad</label>
-                                        <input type="text" id="localidad" name="localidad" value="<?php echo esc_attr($despacho['localidad']); ?>" class="form-control">
-                                    </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label for="localidad" class="form-label">Localidad</label>
+                                    <input type="text" id="localidad" name="localidad" value="<?php echo esc_attr($results['hits'][0]['localidad']); ?>" class="form-control">
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="provincia" class="form-label">Provincia</label>
-                                        <input type="text" id="provincia" name="provincia" value="<?php echo esc_attr($despacho['provincia']); ?>" class="form-control">
-                                    </div>
+                                <div class="form-group col-md-4">
+                                    <label for="provincia" class="form-label">Provincia</label>
+                                    <input type="text" id="provincia" name="provincia" value="<?php echo esc_attr($results['hits'][0]['provincia']); ?>" class="form-control">
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="codigo_postal" class="form-label">Código Postal</label>
-                                        <input type="text" id="codigo_postal" name="codigo_postal" value="<?php echo esc_attr($despacho['codigo_postal']); ?>" class="form-control">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="telefono" class="form-label">Teléfono</label>
-                                        <input type="tel" id="telefono" name="telefono" value="<?php echo esc_attr($despacho['telefono']); ?>" class="form-control">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="email" class="form-label">Email</label>
-                                        <input type="email" id="email" name="email" value="<?php echo esc_attr($despacho['email']); ?>" class="form-control">
-                                    </div>
-                                </div>
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="web" class="form-label">Sitio Web</label>
-                                        <input type="url" id="web" name="web" value="<?php echo esc_attr($despacho['web']); ?>" class="form-control">
-                                    </div>
+                                <div class="form-group col-md-4">
+                                    <label for="codigo_postal" class="form-label">Código Postal</label>
+                                    <input type="text" id="codigo_postal" name="codigo_postal" value="<?php echo esc_attr($results['hits'][0]['codigo_postal']); ?>" class="form-control">
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'areas-practica') ? 'show active' : ''; ?>" 
-                     id="areas-practica" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Áreas de Práctica y Especialidades</h2>
-                            <div class="row g-3">
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="areas_practica" class="form-label">Áreas de Práctica</label>
-                                        <div class="areas-container">
-                                            <div class="areas-available">
-                                                <h4>Áreas Disponibles</h4>
-                                                <?php
-                                                // Mostrar las áreas disponibles
-                                                foreach ($todas_areas as $area) {
-                                                    $checked = in_array($area, $areas_seleccionadas) ? 'checked' : '';
-                                                    echo '<div class="area-item">';
-                                                    echo '<input type="checkbox" id="area_' . esc_attr($area) . '" name="areas_practica[]" value="' . esc_attr($area) . '" ' . $checked . '>';
-                                                    echo '<label for="area_' . esc_attr($area) . '">' . esc_html($area) . '</label>';
-                                                    echo '</div>';
-                                                }
-                                                ?>
-                                            </div>
-                                        </div>
-                                    </div>
+                <!-- Pestaña Contacto -->
+                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'contacto') ? 'show active' : ''; ?>" 
+                     id="contacto" 
+                     role="tabpanel"
+                     aria-labelledby="contacto-tab">
+                    <div class="tab-pane-content">
+                        <div class="form-section">
+                            <h2 class="section-title">Información de Contacto</h2>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="tel" id="telefono" name="telefono" value="<?php echo esc_attr($results['hits'][0]['telefono']); ?>" class="form-control">
                                 </div>
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="especialidades" class="form-label">Especialidades</label>
-                                        <textarea id="especialidades" name="especialidades" rows="4" class="form-control"><?php echo esc_textarea(implode("\n", $despacho['especialidades'] ?? [])); ?></textarea>
-                                        <div class="form-text">Introduce cada especialidad en una línea nueva.</div>
-                                    </div>
+                                <div class="form-group col-md-6">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" id="email" name="email" value="<?php echo esc_attr($results['hits'][0]['email']); ?>" class="form-control">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="web" class="form-label">Sitio Web</label>
+                                    <input type="url" id="web" name="web" value="<?php echo esc_attr($results['hits'][0]['web']); ?>" class="form-control">
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'horario') ? 'show active' : ''; ?>" 
-                     id="horario" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Horario</h2>
-                            <div class="row g-3">
+                        <div class="form-section">
+                            <h2 class="section-title">Redes Sociales</h2>
+                            <div class="social-media-grid">
+                                <div class="social-media-item">
+                                    <i class="fab fa-facebook"></i>
+                                    <input type="url" name="redes_sociales[facebook]" value="<?php echo esc_attr($results['hits'][0]['redes_sociales']['facebook'] ?? ''); ?>" class="form-control" placeholder="URL de Facebook">
+                                </div>
+                                <div class="social-media-item">
+                                    <i class="fab fa-twitter"></i>
+                                    <input type="url" name="redes_sociales[twitter]" value="<?php echo esc_attr($results['hits'][0]['redes_sociales']['twitter'] ?? ''); ?>" class="form-control" placeholder="URL de Twitter">
+                                </div>
+                                <div class="social-media-item">
+                                    <i class="fab fa-linkedin"></i>
+                                    <input type="url" name="redes_sociales[linkedin]" value="<?php echo esc_attr($results['hits'][0]['redes_sociales']['linkedin'] ?? ''); ?>" class="form-control" placeholder="URL de LinkedIn">
+                                </div>
+                                <div class="social-media-item">
+                                    <i class="fab fa-instagram"></i>
+                                    <input type="url" name="redes_sociales[instagram]" value="<?php echo esc_attr($results['hits'][0]['redes_sociales']['instagram'] ?? ''); ?>" class="form-control" placeholder="URL de Instagram">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h2 class="section-title">Horario de Atención</h2>
+                            <div class="horario-grid">
                                 <?php
-                                $dias = [
+                                $dias = array(
                                     'lunes' => 'Lunes',
                                     'martes' => 'Martes',
                                     'miercoles' => 'Miércoles',
@@ -272,360 +270,420 @@ try {
                                     'viernes' => 'Viernes',
                                     'sabado' => 'Sábado',
                                     'domingo' => 'Domingo'
-                                ];
-                                foreach ($dias as $key => $label) {
-                                    echo '<div class="col-md-4">';
-                                    echo '<div class="form-group">';
-                                    echo '<label for="horario_' . $key . '" class="form-label">' . $label . '</label>';
-                                    echo '<input type="text" id="horario_' . $key . '" name="horario[' . $key . ']" value="' . esc_attr($despacho['horario'][$key] ?? '') . '" class="form-control">';
-                                    echo '</div>';
-                                    echo '</div>';
-                                }
+                                );
+                                foreach ($dias as $key => $dia):
                                 ?>
+                                <div class="horario-item">
+                                    <label class="form-label"><?php echo $dia; ?></label>
+                                    <input type="text" name="horario[<?php echo $key; ?>]" value="<?php echo esc_attr($results['hits'][0]['horario'][$key] ?? ''); ?>" class="form-control" placeholder="Ej: 9:00 - 18:00">
+                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'redes-sociales') ? 'show active' : ''; ?>" 
-                     id="redes-sociales" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Redes Sociales</h2>
-                            <div class="row g-3">
-                                <?php
-                                $redes = [
-                                    'facebook' => 'Facebook',
-                                    'twitter' => 'Twitter',
-                                    'linkedin' => 'LinkedIn',
-                                    'instagram' => 'Instagram'
-                                ];
-                                foreach ($redes as $key => $label) {
-                                    echo '<div class="col-md-6">';
-                                    echo '<div class="form-group">';
-                                    echo '<label for="redes_sociales_' . $key . '" class="form-label">' . $label . '</label>';
-                                    echo '<input type="url" id="redes_sociales_' . $key . '" name="redes_sociales[' . $key . ']" value="' . esc_attr($despacho['redes_sociales'][$key] ?? '') . '" class="form-control">';
-                                    echo '</div>';
-                                    echo '</div>';
-                                }
-                                ?>
+                <!-- Pestaña Áreas y Especialidades -->
+                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'areas') ? 'show active' : ''; ?>" 
+                     id="areas" 
+                     role="tabpanel"
+                     aria-labelledby="areas-tab">
+                    <div class="tab-pane-content">
+                        <div class="form-section">
+                            <h2 class="section-title">Áreas de Práctica</h2>
+                            <div class="areas-list">
+                                <?php foreach ($todas_areas as $area): ?>
+                                <label class="area-tag">
+                                    <input type="checkbox" name="areas_practica[]" value="<?php echo esc_attr($area); ?>" 
+                                        <?php echo in_array($area, $areas_seleccionadas) ? 'checked' : ''; ?>>
+                                    <?php echo esc_html($area); ?>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h2 class="section-title">Especialidades</h2>
+                            <div class="form-group">
+                                <textarea id="especialidades" name="especialidades" class="form-control" rows="5" placeholder="Ingrese una especialidad por línea"><?php echo esc_textarea(implode("\n", $results['hits'][0]['especialidades'] ?? array())); ?></textarea>
+                                <small class="form-text">Ingrese una especialidad por línea.</small>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'info-adicional') ? 'show active' : ''; ?>" 
-                     id="info-adicional" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Información Adicional</h2>
-                            <div class="row g-3">
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="descripcion" class="form-label">Descripción</label>
-                                        <textarea id="descripcion" name="descripcion" rows="5" class="form-control"><?php echo esc_textarea($despacho['descripcion']); ?></textarea>
-                                    </div>
+                <!-- Pestaña Información Adicional -->
+                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'adicional') ? 'show active' : ''; ?>" 
+                     id="adicional" 
+                     role="tabpanel"
+                     aria-labelledby="adicional-tab">
+                    <div class="tab-pane-content">
+                        <div class="form-section">
+                            <h2 class="section-title">Descripción y Experiencia</h2>
+                            <div class="form-group">
+                                <label for="descripcion" class="form-label">Descripción</label>
+                                <textarea id="descripcion" name="descripcion" class="form-control" rows="5"><?php echo esc_textarea($results['hits'][0]['descripcion']); ?></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="experiencia" class="form-label">Experiencia</label>
+                                <textarea id="experiencia" name="experiencia" class="form-control" rows="3"><?php echo esc_textarea($results['hits'][0]['experiencia']); ?></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h2 class="section-title">Información Adicional</h2>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label for="tamaño_despacho" class="form-label">Tamaño del Despacho</label>
+                                    <input type="text" id="tamaño_despacho" name="tamaño_despacho" value="<?php echo esc_attr($results['hits'][0]['tamaño_despacho']); ?>" class="form-control">
                                 </div>
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label for="experiencia" class="form-label">Experiencia</label>
-                                        <textarea id="experiencia" name="experiencia" rows="3" class="form-control"><?php echo esc_textarea($despacho['experiencia']); ?></textarea>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="tamaño_despacho" class="form-label">Tamaño del Despacho</label>
-                                        <input type="text" id="tamaño_despacho" name="tamaño_despacho" value="<?php echo esc_attr($despacho['tamaño_despacho']); ?>" class="form-control">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="año_fundacion" class="form-label">Año de Fundación</label>
-                                        <input type="number" id="año_fundacion" name="año_fundacion" value="<?php echo esc_attr($despacho['año_fundacion']); ?>" class="form-control">
-                                    </div>
+                                <div class="form-group col-md-6">
+                                    <label for="año_fundacion" class="form-label">Año de Fundación</label>
+                                    <input type="number" id="año_fundacion" name="año_fundacion" value="<?php echo esc_attr($results['hits'][0]['año_fundacion']); ?>" class="form-control">
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'estado') ? 'show active' : ''; ?>" 
-                     id="estado" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Estado y Verificación</h2>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="nivel" class="form-label">Nivel del Despacho</label>
-                                        <select id="nivel" name="nivel" class="form-select">
-                                            <option value="basic" <?php selected($despacho['nivel'] ?? '', 'basic'); ?>>Básico</option>
-                                            <option value="verificado" <?php selected($despacho['nivel'] ?? '', 'verificado'); ?>>Verificado</option>
-                                            <option value="premium" <?php selected($despacho['nivel'] ?? '', 'premium'); ?>>Premium</option>
-                                        </select>
-                                    </div>
+                        <div class="form-section">
+                            <h2 class="section-title">Estado y Verificación</h2>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label for="estado_verificacion" class="form-label">Estado de Verificación</label>
+                                    <select id="estado_verificacion" name="estado_verificacion" class="form-control">
+                                        <option value="pendiente" <?php selected($results['hits'][0]['estado_verificacion'], 'pendiente'); ?>>Pendiente</option>
+                                        <option value="verificado" <?php selected($results['hits'][0]['estado_verificacion'], 'verificado'); ?>>Verificado</option>
+                                        <option value="rechazado" <?php selected($results['hits'][0]['estado_verificacion'], 'rechazado'); ?>>Rechazado</option>
+                                    </select>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="estado_verificacion" class="form-label">Estado de Verificación</label>
-                                        <select id="estado_verificacion" name="estado_verificacion" class="form-select">
-                                            <option value="pendiente" <?php selected($despacho['estado_verificacion'], 'pendiente'); ?>>Pendiente</option>
-                                            <option value="verificado" <?php selected($despacho['estado_verificacion'], 'verificado'); ?>>Verificado</option>
-                                            <option value="rechazado" <?php selected($despacho['estado_verificacion'], 'rechazado'); ?>>Rechazado</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="estado_registro" class="form-label">Estado del Registro</label>
-                                        <select id="estado_registro" name="estado_registro" class="form-select">
-                                            <option value="activo" <?php selected($despacho['estado_registro'], 'activo'); ?>>Activo</option>
-                                            <option value="inactivo" <?php selected($despacho['estado_registro'], 'inactivo'); ?>>Inactivo</option>
-                                            <option value="suspendido" <?php selected($despacho['estado_registro'], 'suspendido'); ?>>Suspendido</option>
-                                        </select>
-                                    </div>
+                                <div class="form-group col-md-6">
+                                    <label for="estado_registro" class="form-label">Estado del Registro</label>
+                                    <select id="estado_registro" name="estado_registro" class="form-control">
+                                        <option value="activo" <?php selected($results['hits'][0]['estado_registro'], 'activo'); ?>>Activo</option>
+                                        <option value="inactivo" <?php selected($results['hits'][0]['estado_registro'], 'inactivo'); ?>>Inactivo</option>
+                                        <option value="pendiente" <?php selected($results['hits'][0]['estado_registro'], 'pendiente'); ?>>Pendiente</option>
+                                    </select>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'equipo') ? 'show active' : ''; ?>" 
-                     id="equipo" 
-                     role="tabpanel">
-                    <div class="card">
-                        <div class="card-body">
-                            <h2 class="card-title h4 mb-4">Equipo</h2>
-                            <div id="equipo-container">
-                                <?php 
-                                $equipo = $despacho['equipo'] ?? [];
-                                if (!empty($equipo)) {
-                                    foreach ($equipo as $index => $miembro) {
-                                        ?>
-                                        <div class="miembro-equipo card mb-3">
-                                            <div class="card-body">
-                                                <div class="row g-3">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label class="form-label">Nombre</label>
-                                                            <input type="text" name="equipo[<?php echo $index; ?>][nombre]" value="<?php echo esc_attr($miembro['nombre']); ?>" class="form-control">
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label class="form-label">Cargo/Departamento</label>
-                                                            <input type="text" name="equipo[<?php echo $index; ?>][cargo]" value="<?php echo esc_attr($miembro['cargo']); ?>" class="form-control">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="mt-3">
-                                                    <button type="button" class="btn btn-danger btn-sm remove-miembro">Eliminar miembro</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <?php
-                                    }
-                                }
-                                ?>
-                            </div>
-                            <button type="button" class="btn btn-primary" id="add-miembro">Añadir miembro del equipo</button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="mt-4">
-                <button type="submit" name="submit" id="submit" class="btn btn-primary">
-                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                    Guardar Cambios
-                </button>
-                <a href="<?php echo admin_url('admin.php?page=lexhoy-despachos'); ?>" class="btn btn-secondary">Cancelar</a>
-            </div>
-        </form>
-    </div>
+        <!-- Botones de acción -->
+        <div class="form-actions">
+            <button type="submit" class="button button-primary">
+                <i class="fas fa-save"></i> Guardar Cambios
+            </button>
+            <a href="<?php echo admin_url('admin.php?page=lexhoy-despachos-list'); ?>" class="button">
+                <i class="fas fa-arrow-left"></i> Volver al Listado
+            </a>
+        </div>
+    </form>
 </div>
 
 <style>
-/* Estilos personalizados que complementan Bootstrap */
-.lexhoy-despachos-search {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
+/* Estilos generales del formulario */
+.lexhoy-despachos-admin {
+    max-width: 1200px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
 }
 
-.search-header {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
+/* Navegación de pestañas */
+.nav-tabs-wrapper {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccd0d4;
 }
 
-.search-content {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-/* Estilos para el alfabeto */
-.alfabeto-container {
+.nav-tabs {
     display: flex;
-    justify-content: space-between;
-    width: 100%;
-    flex-wrap: nowrap;
-    margin-bottom: 1rem;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-.letra-item {
-    flex: 1;
-    text-align: center;
-    padding: 0.5rem;
+.nav-tabs .nav-item {
+    margin-bottom: -1px;
+}
+
+.nav-tabs .nav-link {
+    padding: 12px 20px;
+    border: 1px solid #ccd0d4;
+    border-bottom: none;
+    background: #f8f9fa;
+    color: #1d2327;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    margin-right: 5px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.nav-tabs .nav-link:hover {
+    background: #f0f0f0;
+}
+
+.nav-tabs .nav-link.active {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+    z-index: 2;
+}
+
+/* Contenido de las pestañas */
+.tab-content-wrapper {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-top: none;
+    padding: 20px;
+}
+
+.tab-pane {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.tab-pane.show {
+    display: block;
+    opacity: 1;
+}
+
+.tab-pane-content {
+    display: block !important;
+}
+
+/* Secciones del formulario */
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+    color: #1d2327;
+    font-weight: 600;
+}
+
+/* Campos del formulario */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.form-group {
+    padding: 0 10px;
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #1d2327;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.form-control:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+/* Áreas de práctica */
+.areas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.area-tag {
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    color: #1d2327;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
-.letra-item:hover {
-    background-color: #f8f9fa;
+.area-tag:hover {
+    background: #f0f0f0;
 }
 
-.letra-item.active {
-    background-color: #0d6efd;
-    color: white;
+.area-tag input[type="checkbox"] {
+    margin: 0;
 }
 
-/* Para pantallas muy anchas */
-@media (min-width: 1400px) {
-    .search-header {
-        max-width: 100%;
-        margin: 0;
-        padding: 0;
+/* Redes sociales */
+.social-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.social-media-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.social-media-item i {
+    font-size: 20px;
+    color: #1d2327;
+    width: 24px;
+    text-align: center;
+}
+
+/* Horario */
+.horario-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.horario-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Botones de acción */
+.form-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ccd0d4;
+    display: flex;
+    gap: 10px;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    background: #f8f9fa;
+    color: #1d2327;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.button:hover {
+    background: #f0f0f0;
+}
+
+.button-primary {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+.button-primary:hover {
+    background: #135e96;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .nav-tabs {
+        flex-wrap: wrap;
     }
-    
-    .search-content {
-        max-width: 1320px; /* Ancho máximo de Bootstrap xl */
-        margin: 0 auto;
-        padding: 0 15px;
+
+    .nav-tabs .nav-link {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .social-media-grid,
+    .horario-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-group {
+        width: 100%;
     }
 }
 
-.lexhoy-despachos-admin .card {
-    margin-bottom: 1.5rem;
+/* Ajustes para las pestañas */
+.nav-link {
+    cursor: pointer;
 }
 
-.lexhoy-despachos-admin .form-label {
-    font-weight: 500;
-}
-
-.lexhoy-despachos-admin .nav-tabs {
-    border-bottom: 1px solid #dee2e6;
-}
-
-.lexhoy-despachos-admin .nav-tabs .nav-link {
-    color: #495057;
-}
-
-.lexhoy-despachos-admin .nav-tabs .nav-link.active {
-    color: #0d6efd;
-    font-weight: 500;
-}
-
-.lexhoy-despachos-admin .form-text {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-
-.lexhoy-despachos-admin .btn-primary {
-    padding: 0.5rem 1.5rem;
-}
-
-.lexhoy-despachos-admin .btn-secondary {
-    padding: 0.5rem 1.5rem;
-    margin-left: 0.5rem;
+.nav-link.active {
+    background-color: #2271b1 !important;
+    color: #fff !important;
+    border-color: #2271b1 !important;
 }
 </style>
 
 <script>
 jQuery(document).ready(function($) {
-    // Inicializar los tooltips de Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // Manejo del envío del formulario
-    $('.despacho-form').on('submit', function(e) {
-        var $form = $(this);
-        var $submitBtn = $form.find('button[type="submit"]');
-        var $spinner = $submitBtn.find('.spinner-border');
-
-        // Mostrar spinner y deshabilitar botón
-        $spinner.removeClass('d-none');
-        $submitBtn.prop('disabled', true);
-
-        // Crear y mostrar el mensaje de carga
-        if (!$('#loading-message').length) {
-            $('<div id="loading-message" class="alert alert-info alert-dismissible fade show mt-3" role="alert">' +
-              '<div class="d-flex align-items-center">' +
-              '<div class="spinner-border spinner-border-sm me-2" role="status"></div>' +
-              '<div>Guardando cambios... Por favor, espere.</div>' +
-              '</div>' +
-              '</div>').insertAfter($form);
-        }
-    });
-
-    // Manejo del equipo
-    var equipoIndex = <?php echo count($equipo); ?>;
-    
-    $('#add-miembro').on('click', function() {
-        var template = `
-            <div class="miembro-equipo card mb-3">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Nombre</label>
-                                <input type="text" name="equipo[${equipoIndex}][nombre]" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Cargo/Departamento</label>
-                                <input type="text" name="equipo[${equipoIndex}][cargo]" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <button type="button" class="btn btn-success btn-sm add-miembro-confirm">Añadir</button>
-                        <button type="button" class="btn btn-danger btn-sm remove-miembro">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        $('#equipo-container').append(template);
-        equipoIndex++;
-    });
-
-    $(document).on('click', '.remove-miembro', function() {
-        $(this).closest('.miembro-equipo').remove();
-    });
-
-    $(document).on('click', '.add-miembro-confirm', function() {
-        var $miembro = $(this).closest('.miembro-equipo');
-        var nombre = $miembro.find('input[name$="[nombre]"]').val();
-        var cargo = $miembro.find('input[name$="[cargo]"]').val();
+    // Función para cambiar de pestaña
+    function switchTab(tabId) {
+        // Ocultar todas las pestañas
+        $('.tab-pane').removeClass('show active');
         
-        if (!nombre || !cargo) {
-            alert('Por favor, completa todos los campos');
-            return;
-        }
+        // Desactivar todos los botones
+        $('.nav-link').removeClass('active').attr('aria-selected', 'false');
         
-        // Cambiar los botones después de añadir
-        $miembro.find('.mt-3').html('<button type="button" class="btn btn-danger btn-sm remove-miembro">Eliminar miembro</button>');
+        // Mostrar la pestaña seleccionada
+        $('#' + tabId).addClass('show active');
+        
+        // Activar el botón correspondiente
+        $('#' + tabId + '-tab').addClass('active').attr('aria-selected', 'true');
+        
+        // Actualizar el campo oculto
+        $('#current_tab').val(tabId);
+    }
+
+    // Manejar clics en las pestañas
+    $('.nav-link').on('click', function(e) {
+        e.preventDefault();
+        var targetId = $(this).attr('data-bs-target').replace('#', '');
+        switchTab(targetId);
     });
+
+    // Restaurar la pestaña activa al cargar la página
+    var currentTab = $('#current_tab').val() || 'info-basica';
+    switchTab(currentTab);
 });
 </script> 

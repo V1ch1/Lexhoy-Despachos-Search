@@ -465,6 +465,16 @@
   line-height: 1.3;
 }
 
+.despacho-name a {
+  color: #000;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.despacho-name a:hover {
+  color: #e10000;
+}
+
 .despacho-location {
   font-size: 18px;
   margin-bottom: 15px;
@@ -480,15 +490,20 @@
 }
 
 .despacho-link {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  padding: 5px 10px;
-  border: 1px solid #000000;
-  border-bottom-width: 3px;
+  display: inline-block;
+  padding: 8px 16px;
+  background: #fff;
   color: #e10000;
   text-decoration: none;
-  font-size: 16px;
+  border: 1px solid #000;
+  border-bottom-width: 3px;
+  transition: all 0.3s ease;
+  margin-top: 15px;
+}
+
+.despacho-link:hover {
+  background: #f0f0f0;
+  transform: translateY(-2px);
 }
 
 /* Paginación */
@@ -547,5 +562,231 @@
     max-width: 1320px;
     margin: 0 auto;
     padding: 0 15px;
+  }
+}
+
+/* Estilos para el formulario de edición de despachos */
+.despacho-form {
+  background: #fff;
+  padding: 20px;
+  border: 1px solid #000;
+  border-bottom-width: 5px;
+}
+
+/* Navegación de pestañas */
+.nav-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #000;
+  padding-bottom: 0;
+}
+
+.nav-tabs .nav-item {
+  margin-bottom: -1px;
+}
+
+.nav-tabs .nav-link {
+  padding: 12px 20px;
+  border: 1px solid #000;
+  border-bottom: none;
+  background: #fff;
+  color: #000;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  margin-right: 5px;
+  font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+  background: #f0f0f0;
+}
+
+.nav-tabs .nav-link.active {
+  background: #e10000;
+  color: #fff;
+  border-color: #000;
+}
+
+/* Contenido de las pestañas */
+.tab-content {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #000;
+  border-top: none;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* Estilos para los campos del formulario */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #000;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #000;
+  border-radius: 0;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #e10000;
+  outline: none;
+}
+
+/* Estilos para los checkboxes y radio buttons */
+.form-check {
+  margin-bottom: 10px;
+}
+
+.form-check-input {
+  margin-right: 8px;
+}
+
+/* Estilos para los botones */
+.btn {
+  padding: 10px 20px;
+  border: 1px solid #000;
+  border-bottom-width: 3px;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.btn:hover {
+  background: #f0f0f0;
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  background: #e10000;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #c00000;
+}
+
+/* Estilos para las áreas de texto */
+textarea.form-control {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Estilos para los selectores múltiples */
+select[multiple].form-control {
+  height: auto;
+  min-height: 100px;
+}
+
+/* Estilos para los mensajes de alerta */
+.alert {
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #000;
+  border-radius: 0;
+}
+
+.alert-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.alert-danger {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Estilos para las etiquetas de áreas de práctica */
+.areas-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.area-tag {
+  padding: 5px 12px;
+  background: #fff;
+  border: 1px solid #000;
+  color: #000;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.area-tag input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Estilos para los campos de redes sociales */
+.social-media-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.social-media-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.social-media-input i {
+  font-size: 20px;
+  color: #000;
+}
+
+/* Estilos para el horario */
+.horario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.horario-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .nav-tabs {
+    flex-wrap: wrap;
+  }
+
+  .nav-tabs .nav-link {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+  }
+
+  .social-media-group {
+    grid-template-columns: 1fr;
+  }
+
+  .horario-grid {
+    grid-template-columns: 1fr;
   }
 }

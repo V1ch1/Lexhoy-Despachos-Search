@@ -2,7 +2,7 @@
   "name": "lexhoy/despachos-search",
   "description": "Plugin para gestionar y buscar despachos de abogados integrado con Algolia",
   "type": "wordpress-plugin",
-  "license": "MIT",
+  "license": "GPL-2.0-or-later",
   "version": "2.2.0",
   "authors": [
     {
@@ -13,12 +13,12 @@
   ],
   "require": {
     "php": ">=7.4",
-    "algolia/algoliasearch-client-php": "^3.0",
+    "algolia/algoliasearch-client-php": "^4.19.0",
     "composer/installers": "^2.0"
   },
   "autoload": {
     "psr-4": {
-      "Lexhoy\\Despachos\\": "src/"
+      "Lexhoy\\Despachos\\": "includes/"
     }
   },
   "config": {

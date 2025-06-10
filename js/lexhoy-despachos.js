@@ -127,11 +127,11 @@ jQuery(document).ready(function ($) {
         container: "#hits",
         templates: {
           item: `
-            <div class="despacho-card">
+            <div class="despacho-card hit-card" data-hit='{{{json this}}}'>
               <div class="despacho-name">{{nombre}}</div>
               <div class="despacho-location">{{localidad}}, {{provincia}}</div>
               <div class="despacho-areas">{{areas_practica}}</div>
-              <a href="/{{slug}}" class="despacho-link">Ver más</a>
+              <button class="despacho-link" onclick="window.navigateToDespacho('{{slug}}')">Ver más</button>
             </div>
           `,
           empty: `
