@@ -96,10 +96,10 @@ get_header();
                     </div>
                 <?php endif; ?>
 
-                <!-- Áreas de Práctica -->
+                <!-- Áreas -->
                 <?php if (!empty($despacho['areas_practica'])): ?>
                     <div class="info-section">
-                        <h2><i class="fas fa-briefcase"></i> Áreas de Práctica</h2>
+                        <h2><i class="fas fa-briefcase"></i> Áreas</h2>
                         <div class="info-content">
                             <div class="areas-list">
                                 <?php foreach ($despacho['areas_practica'] as $area): ?>

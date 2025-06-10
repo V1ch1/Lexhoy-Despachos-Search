@@ -5,43 +5,29 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="lexhoy-despachos-search">
-    <!-- Contenedor principal de búsqueda -->
+    <!-- Barra de búsqueda -->
     <div id="searchbox"></div>
 
-    <!-- Layout principal -->
+    <!-- Filtros activos -->
+    <div id="current-refinements"></div>
+
+    <!-- Contenedor de resultados -->
     <div class="lexhoy-despachos-layout">
         <!-- Panel de filtros -->
         <div class="lexhoy-despachos-filters">
-            <div id="refinements">
-                <!-- Filtros por ciudad -->
-                <div class="filter-section">
-                    <h3>Ciudad</h3>
-                    <div id="city-list"></div>
-                </div>
-
-                <!-- Filtros por provincia -->
-                <div class="filter-section">
-                    <h3>Provincia</h3>
-                    <div id="province-list"></div>
-                </div>
-
-                <!-- Filtros por especialidades -->
-                <div class="filter-section">
-                    <h3>Especialidades</h3>
-                    <div id="specialties-list"></div>
-                </div>
+            <div class="filter-tabs">
+                <button class="filter-tab-btn active" data-tab="province">Provincias</button>
+                <button class="filter-tab-btn" data-tab="location">Localidades</button>
+            </div>
+            <div class="filter-tab-panes">
+                <div id="province-list" class="filter-tab-pane active"></div>
+                <div id="location-list" class="filter-tab-pane"></div>
             </div>
         </div>
 
-        <!-- Contenido principal -->
+        <!-- Resultados -->
         <div class="lexhoy-despachos-main">
-            <!-- Estadísticas de búsqueda -->
-            <div id="stats"></div>
-
-            <!-- Resultados de búsqueda -->
             <div id="hits"></div>
-
-            <!-- Paginación -->
             <div id="pagination"></div>
         </div>
     </div>

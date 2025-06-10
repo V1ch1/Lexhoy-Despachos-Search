@@ -177,4 +177,8 @@ try {
     margin-right: 4px;
     width: 250px;
 }
+.ais-SearchBox-submit,
+.ais-SearchBox-reset {
+    display: none !important;
+}
 </style> 

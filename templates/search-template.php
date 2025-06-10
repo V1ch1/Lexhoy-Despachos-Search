@@ -26,13 +26,13 @@ if (!defined('ABSPATH')) {
             <div class="filters-tabs">
                 <div class="filters-tab-header">
                     <button class="filter-tab-btn active" data-tab="province">Provincias</button>
-                    <button class="filter-tab-btn" data-tab="practice">Áreas de Práctica</button>
                     <button class="filter-tab-btn" data-tab="location">Localidades</button>
+                    <button class="filter-tab-btn" data-tab="practice">Áreas</button>
                 </div>
                 <div class="filters-tab-content">
                     <div id="province-list" class="filter-tab-pane active"></div>
-                    <div id="practice-area-list" class="filter-tab-pane"></div>
                     <div id="location-list" class="filter-tab-pane"></div>
+                    <div id="practice-list" class="filter-tab-pane"></div>
                 </div>
             </div>
             <div id="current-refinements"></div>

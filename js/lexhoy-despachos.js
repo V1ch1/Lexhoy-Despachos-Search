@@ -98,6 +98,11 @@ jQuery(document).ready(function ($) {
 
   // Inicializar Algolia si estamos en la página de búsqueda
   if ($(".lexhoy-despachos-search").length) {
+    console.log("Inicializando búsqueda de Algolia...");
+    console.log("App ID:", lexhoyDespachosData.appId);
+    console.log("Search API Key:", lexhoyDespachosData.searchApiKey);
+    console.log("Index Name:", lexhoyDespachosData.indexName);
+
     const searchClient = algoliasearch(
       lexhoyDespachosData.appId,
       lexhoyDespachosData.searchApiKey
@@ -121,6 +126,20 @@ jQuery(document).ready(function ($) {
       }),
     ]);
 
+    // Widget de filtros activos (debe ir después de la búsqueda)
+    search.addWidgets([
+      instantsearch.widgets.currentRefinements({
+        container: "#current-refinements",
+        cssClasses: {
+          root: "ais-CurrentRefinements",
+          list: "ais-CurrentRefinements-list",
+          item: "ais-CurrentRefinements-item",
+          label: "ais-CurrentRefinements-label",
+          delete: "ais-CurrentRefinements-delete",
+        },
+      }),
+    ]);
+
     // Widget de resultados
     search.addWidgets([
       instantsearch.widgets.hits({
@@ -130,7 +149,7 @@ jQuery(document).ready(function ($) {
             <div class="despacho-card hit-card" data-hit='{{{json this}}}'>
               <div class="despacho-name">{{nombre}}</div>
               <div class="despacho-location">{{localidad}}, {{provincia}}</div>
-              <div class="despacho-areas">{{areas_practica}}</div>
+              <div class="despacho-areas"><strong>Áreas:</strong> {{areas_practica}}</div>
               <button class="despacho-link" onclick="window.navigateToDespacho('{{slug}}')">Ver más</button>
             </div>
           `,
@@ -270,25 +289,6 @@ jQuery(document).ready(function ($) {
     // Añadir el filtro personalizado
     search.addWidgets([practiceAreaFilter]);
 
-    // Widget para mostrar refinamientos actuales
-    search.addWidgets([
-      instantsearch.widgets.currentRefinements({
-        container: "#current-refinements",
-      }),
-    ]);
-
-    // Añadir listener para depuración
-    search.on("render", function () {
-      console.log("Estado actual de la búsqueda:", search.helper.state);
-      console.log("Resultados:", search.helper.lastResults?.hits);
-      console.log("Facets:", search.helper.lastResults?.facets);
-      console.log("DisjunctiveFacets:", search.helper.state.disjunctiveFacets);
-      console.log("Refinements:", search.helper.state.refinementList);
-    });
-
-    // Iniciar la búsqueda
-    search.start();
-
     // Búsqueda por letra
     $(".alphabet-letter").on("click", function () {
       const letter = $(this).data("letter");
@@ -315,5 +315,9 @@ jQuery(document).ready(function ($) {
       $(".filter-tab-pane").removeClass("active");
       $(`#${tabId}-list`).addClass("active");
     });
+
+    // Iniciar la búsqueda
+    search.start();
+    console.log("Búsqueda de Algolia inicializada correctamente");
   }
 });

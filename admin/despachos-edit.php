@@ -283,31 +283,23 @@ try {
                     </div>
                 </div>
 
-                <!-- Pestaña Áreas y Especialidades -->
-                <div class="tab-pane fade <?php echo (isset($_GET['tab']) && $_GET['tab'] === 'areas') ? 'show active' : ''; ?>" 
-                     id="areas" 
-                     role="tabpanel"
-                     aria-labelledby="areas-tab">
-                    <div class="tab-pane-content">
-                        <div class="form-section">
-                            <h2 class="section-title">Áreas de Práctica</h2>
-                            <div class="areas-list">
-                                <?php foreach ($todas_areas as $area): ?>
-                                <label class="area-tag">
-                                    <input type="checkbox" name="areas_practica[]" value="<?php echo esc_attr($area); ?>" 
-                                        <?php echo in_array($area, $areas_seleccionadas) ? 'checked' : ''; ?>>
-                                    <?php echo esc_html($area); ?>
-                                </label>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-
-                        <div class="form-section">
-                            <h2 class="section-title">Especialidades</h2>
-                            <div class="form-group">
-                                <textarea id="especialidades" name="especialidades" class="form-control" rows="5" placeholder="Ingrese una especialidad por línea"><?php echo esc_textarea(implode("\n", $results['hits'][0]['especialidades'] ?? array())); ?></textarea>
-                                <small class="form-text">Ingrese una especialidad por línea.</small>
-                            </div>
+                <!-- Pestaña Áreas -->
+                <div class="tab-pane fade" id="areas" role="tabpanel" aria-labelledby="areas-tab">
+                    <div class="form-group">
+                        <label class="form-label">Áreas</label>
+                        <div class="areas-grid">
+                            <?php foreach ($todas_areas as $area): ?>
+                                <div class="area-item">
+                                    <input type="checkbox" 
+                                           name="areas_practica[]" 
+                                           value="<?php echo esc_attr($area); ?>"
+                                           id="area_<?php echo esc_attr(sanitize_title($area)); ?>"
+                                           <?php checked(in_array($area, $areas_seleccionadas)); ?>>
+                                    <label for="area_<?php echo esc_attr(sanitize_title($area)); ?>">
+                                        <?php echo esc_html($area); ?>
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
@@ -517,33 +509,19 @@ try {
 }
 
 /* Áreas de práctica */
-.areas-list {
+.areas-grid {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-top: 10px;
 }
 
-.area-tag {
-    padding: 8px 16px;
-    background: #f8f9fa;
-    border: 1px solid #ccd0d4;
-    border-radius: 4px;
-    color: #1d2327;
-    font-size: 14px;
-    display: inline-flex;
+.area-item {
+    display: flex;
     align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
 }
 
-.area-tag:hover {
-    background: #f0f0f0;
-}
-
-.area-tag input[type="checkbox"] {
-    margin: 0;
+.area-item input[type="checkbox"] {
+    margin-right: 8px;
 }
 
 /* Redes sociales */
