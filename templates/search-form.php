@@ -5,11 +5,11 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="lexhoy-despachos-search">
-    <!-- Barra de búsqueda -->
-    <div id="searchbox"></div>
-
     <!-- Filtros activos -->
     <div id="current-refinements"></div>
+
+    <!-- Barra de búsqueda -->
+    <div id="searchbox"></div>
 
     <!-- Contenedor de resultados -->
     <div class="lexhoy-despachos-layout">
