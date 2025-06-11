@@ -508,6 +508,35 @@
   line-height: 1.4;
 }
 
+/* Badge de verificación */
+.verification-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 8px 15px;
+  background: #fff;
+  border: 1px solid #000;
+  border-bottom-width: 3px;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e10000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.verification-badge i {
+  font-size: 16px;
+}
+
+.verification-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
 .despacho-name {
   font-size: 24px;
   font-weight: 700;

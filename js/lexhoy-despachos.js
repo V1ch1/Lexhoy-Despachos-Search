@@ -147,6 +147,14 @@ jQuery(document).ready(function ($) {
         templates: {
           item: `
             <div class="despacho-card hit-card" data-hit='{{{json this}}}'>
+              {{#estado_verificacion}}
+                {{#isVerified}}
+                  <div class="verification-badge">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Verificado</span>
+                  </div>
+                {{/isVerified}}
+              {{/estado_verificacion}}
               <div class="despacho-name">{{nombre}}</div>
               <div class="despacho-location">{{localidad}}, {{provincia}}</div>
               <div class="despacho-areas"><strong>Áreas:</strong> {{areas_practica}}</div>

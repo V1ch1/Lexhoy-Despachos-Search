@@ -160,104 +160,229 @@ class LexhoyDespachos {
 
     public function __construct() {
         try {
-            $this->settings = get_option('lexhoy_despachos_settings', array());
-            $this->init_hooks();
+            // Registrar scripts y estilos
+            add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
+            add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
             
-            // Solo actualizar slugs si estamos en el admin y es la primera carga
-            if (is_admin() && !get_option('lexhoy_despachos_slugs_updated')) {
-                $this->update_existing_despachos_slugs();
-                update_option('lexhoy_despachos_slugs_updated', true);
-            }
-
-            // Copiar la plantilla al tema si no existe
-            $this->copy_template_to_theme();
-
-            // Registrar el endpoint AJAX para el formulario de contacto
-            add_action('wp_ajax_despacho_contact_form', array($this, 'handle_contact_form'));
-            add_action('wp_ajax_nopriv_despacho_contact_form', array($this, 'handle_contact_form'));
+            // Registrar menús de administración
+            add_action('admin_menu', array($this, 'add_admin_menu'));
+            
+            // Registrar shortcodes
+            add_shortcode('lexhoy_despachos_search', array($this, 'render_search_form'));
+            
+            // Registrar manejadores AJAX
+            add_action('wp_ajax_update_despacho', array($this, 'handle_despacho_update'));
+            add_action('wp_ajax_nopriv_update_despacho', array($this, 'handle_despacho_update'));
+            
+            // Registrar filtros de plantilla
+            add_filter('single_template', array($this, 'handle_despacho_template'));
+            
+            // Inicializar configuración
+            $this->settings = get_option('lexhoy_despachos_settings', array());
+            
+            // Registrar hooks de activación/desactivación
+            register_activation_hook(__FILE__, array($this, 'activate'));
+            register_deactivation_hook(__FILE__, array($this, 'deactivate'));
+            
         } catch (Exception $e) {
             error_log('Lexhoy Despachos Error: ' . $e->getMessage());
         }
     }
 
-    private function copy_template_to_theme() {
+    private function init_settings() {
         try {
-            // Ruta de la plantilla en el plugin
-            $plugin_template = plugin_dir_path(__FILE__) . 'templates/despacho-single.php';
-            
-            // Ruta de la plantilla en el tema Twenty Twenty-Five
-            $theme_template = get_template_directory() . '/single-despacho.php';
-            
-            error_log('Lexhoy Despachos - Ruta de la plantilla del plugin: ' . $plugin_template);
-            error_log('Lexhoy Despachos - Ruta de la plantilla del tema: ' . $theme_template);
-            
-            // Verificar si la plantilla del plugin existe
-            if (!file_exists($plugin_template)) {
-                error_log('Lexhoy Despachos Error: No se encontró la plantilla en el plugin');
+            // Registrar la configuración
+            register_setting('lexhoy_despachos_options', 'lexhoy_despachos_settings', array(
+                'sanitize_callback' => array($this, 'sanitize_settings')
+            ));
+
+            // Añadir sección de configuración
+            add_settings_section(
+                'lexhoy_despachos_main_section',
+                'Configuración de Algolia',
+                array($this, 'settings_section_callback'),
+                'lexhoy_despachos_options'
+            );
+
+            // Añadir campos de configuración
+            add_settings_field(
+                'algolia_app_id',
+                'Application ID',
+                array($this, 'algolia_app_id_callback'),
+                'lexhoy_despachos_options',
+                'lexhoy_despachos_main_section'
+            );
+
+            add_settings_field(
+                'algolia_admin_api_key',
+                'Admin API Key',
+                array($this, 'algolia_admin_api_key_callback'),
+                'lexhoy_despachos_options',
+                'lexhoy_despachos_main_section'
+            );
+
+            add_settings_field(
+                'algolia_search_api_key',
+                'Search API Key',
+                array($this, 'algolia_search_api_key_callback'),
+                'lexhoy_despachos_options',
+                'lexhoy_despachos_main_section'
+            );
+        } catch (Exception $e) {
+            error_log('Lexhoy Despachos Error: ' . $e->getMessage());
+        }
+    }
+
+    public function settings_section_callback() {
+        echo '<p>Configura las credenciales de Algolia para la búsqueda de despachos.</p>';
+    }
+
+    public function algolia_app_id_callback() {
+        $value = isset($this->settings['algolia_app_id']) ? $this->settings['algolia_app_id'] : '';
+        echo '<input type="text" id="algolia_app_id" name="lexhoy_despachos_settings[algolia_app_id]" value="' . esc_attr($value) . '" class="regular-text">';
+    }
+
+    public function algolia_admin_api_key_callback() {
+        $value = isset($this->settings['algolia_admin_api_key']) ? $this->settings['algolia_admin_api_key'] : '';
+        echo '<input type="password" id="algolia_admin_api_key" name="lexhoy_despachos_settings[algolia_admin_api_key]" value="' . esc_attr($value) . '" class="regular-text">';
+    }
+
+    public function algolia_search_api_key_callback() {
+        $value = isset($this->settings['algolia_search_api_key']) ? $this->settings['algolia_search_api_key'] : '';
+        echo '<input type="password" id="algolia_search_api_key" name="lexhoy_despachos_settings[algolia_search_api_key]" value="' . esc_attr($value) . '" class="regular-text">';
+    }
+
+    public function sanitize_settings($input) {
+        $sanitized = array();
+        
+        if (isset($input['algolia_app_id'])) {
+            $sanitized['algolia_app_id'] = sanitize_text_field($input['algolia_app_id']);
+        }
+        
+        if (isset($input['algolia_search_api_key'])) {
+            $sanitized['algolia_search_api_key'] = sanitize_text_field($input['algolia_search_api_key']);
+        }
+
+        if (isset($input['algolia_admin_api_key'])) {
+            $sanitized['algolia_admin_api_key'] = sanitize_text_field($input['algolia_admin_api_key']);
+        }
+
+        return $sanitized;
+    }
+
+    public function handle_despacho_update() {
+        try {
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('No tienes permisos para realizar esta acción.');
                 return;
             }
-            
-            // Si la plantilla no existe en el tema o es más antigua que la del plugin, copiarla
-            if (!file_exists($theme_template) || filemtime($plugin_template) > filemtime($theme_template)) {
-                error_log('Lexhoy Despachos - Copiando plantilla al tema Twenty Twenty-Five');
-                
-                // Intentar copiar el archivo
-                if (copy($plugin_template, $theme_template)) {
-                    error_log('Lexhoy Despachos - Plantilla copiada exitosamente');
-                    
-                    // Asegurarse de que los permisos sean correctos
-                    chmod($theme_template, 0644);
-                    
-                    // Limpiar la caché de WordPress
-                    wp_cache_flush();
-                    
-                    // Forzar la recarga de las reglas de reescritura
-                    flush_rewrite_rules();
-                } else {
-                    error_log('Lexhoy Despachos Error: No se pudo copiar la plantilla');
-                }
-            } else {
-                error_log('Lexhoy Despachos - La plantilla del tema está actualizada');
+
+            if (!isset($_POST['lexhoy_despachos_nonce']) || !wp_verify_nonce($_POST['lexhoy_despachos_nonce'], 'lexhoy_despachos_edit')) {
+                wp_send_json_error('Verificación de seguridad fallida.');
+                return;
             }
+
+            $objectID = sanitize_text_field($_POST['objectID']);
+            if (empty($objectID)) {
+                wp_send_json_error('ID de despacho no válido.');
+                return;
+            }
+
+            // Debug de los datos recibidos
+            error_log('Datos POST recibidos: ' . print_r($_POST, true));
+
+            // Obtener los datos de Algolia
+            $settings = get_option('lexhoy_despachos_settings');
+            if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
+                wp_send_json_error('Por favor, configure las credenciales de Algolia en la página de configuración.');
+                return;
+            }
+
+            // Incluir el autoloader de Composer
+            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
+            if (!file_exists($autoloader)) {
+                wp_send_json_error('Error: No se encontró el autoloader de Composer.');
+                return;
+            }
+            require_once $autoloader;
+
+            $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
+                $settings['algolia_app_id'],
+                $settings['algolia_admin_api_key']
+            );
+
+            // Obtener el objeto actual primero
+            $despacho_actual = $client->getObject('lexhoy_despachos_formatted', $objectID);
+            error_log('Despacho actual: ' . print_r($despacho_actual, true));
+
+            // Preparar los datos actualizados
+            $despacho_data = array(
+                'objectID' => $objectID,
+                'nombre' => sanitize_text_field($_POST['nombre']),
+                'direccion' => sanitize_text_field($_POST['direccion']),
+                'localidad' => sanitize_text_field($_POST['localidad']),
+                'provincia' => sanitize_text_field($_POST['provincia']),
+                'telefono' => sanitize_text_field($_POST['telefono']),
+                'email' => sanitize_email($_POST['email']),
+                'web' => esc_url_raw($_POST['web']),
+                'areas_practica' => isset($_POST['areas_practica']) ? array_map('sanitize_text_field', $_POST['areas_practica']) : array(),
+                'descripcion' => sanitize_textarea_field($_POST['descripcion']),
+                'estado_verificacion' => sanitize_text_field($_POST['estado_verificacion']),
+                'isVerified' => $_POST['estado_verificacion'] === 'verificado',
+                'ultima_actualizacion' => date('d-m-Y')
+            );
+
+            // Debug para verificar los datos antes de guardar
+            error_log('Datos del despacho antes de guardar: ' . print_r($despacho_data, true));
+
+            // Asegurarse de que todos los campos existentes se mantengan
+            foreach ($despacho_actual as $key => $value) {
+                if (!isset($despacho_data[$key])) {
+                    $despacho_data[$key] = $value;
+                }
+            }
+
+            // Asegurarse de que el slug siempre esté presente
+            if (empty($despacho_data['slug'])) {
+                $despacho_data['slug'] = sanitize_title($despacho_data['nombre']);
+            }
+
+            // Actualizar el objeto en Algolia
+            $client->saveObject('lexhoy_despachos_formatted', $despacho_data);
+
+            // Debug para verificar los datos después de guardar
+            error_log('Datos del despacho después de guardar: ' . print_r($despacho_data, true));
+
+            // Esperar a que Algolia se actualice
+            sleep(2);
+
+            // Verificar que los datos se actualizaron correctamente
+            $despacho_actualizado = $client->getObject('lexhoy_despachos_formatted', $objectID);
+            if (!$despacho_actualizado) {
+                throw new Exception('Error al verificar la actualización en Algolia');
+            }
+
+            error_log('Despacho actualizado: ' . print_r($despacho_actualizado, true));
+
+            wp_send_json_success(array(
+                'message' => 'Despacho actualizado correctamente',
+                'data' => $despacho_actualizado
+            ));
+
         } catch (Exception $e) {
-            error_log('Lexhoy Despachos Error al copiar plantilla: ' . $e->getMessage());
+            error_log('Lexhoy Despachos Error: ' . $e->getMessage());
+            wp_send_json_error('Error al actualizar el despacho: ' . $e->getMessage());
         }
     }
 
-    private function init_hooks() {
+    public function render_search_form() {
         try {
-            // Hooks de administración
-            if (is_admin()) {
-                add_action('admin_menu', array($this, 'add_admin_menu'));
-                add_action('admin_init', array($this, 'register_settings'));
-                add_action('admin_post_lexhoy_despachos_update', array($this, 'handle_despacho_update'));
-                add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
-            }
-
-            // Hooks públicos
-            add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
-            add_shortcode('lexhoy_despachos_search', array($this, 'render_search_form'));
-            add_shortcode('lexhoy_despachos', array($this, 'render_search_form'));
-
-            // Registrar el tipo de post y las reglas de reescritura
-            add_action('init', array($this, 'register_despacho_post_type'));
-            add_action('init', array($this, 'add_rewrite_rules'));
-            
-            // Manejar la plantilla personalizada
-            add_filter('single_template', array($this, 'handle_despacho_template'));
-
-            // Crear la página de búsqueda si no existe
-            add_action('init', array($this, 'create_search_page'));
-
-            // Registrar el endpoint AJAX para el formulario de contacto
-            add_action('wp_ajax_sync_despachos', array($this, 'sync_despachos'));
-            add_action('wp_ajax_nopriv_sync_despachos', array($this, 'sync_despachos'));
-            add_action('wp_ajax_update_despacho_slug', array($this, 'update_despacho_slug'));
-            add_action('wp_ajax_nopriv_update_despacho_slug', array($this, 'update_despacho_slug'));
-            add_action('wp_ajax_get_despacho_details', array($this, 'get_despacho_details'));
-            add_action('wp_ajax_nopriv_get_despacho_details', array($this, 'get_despacho_details'));
+            ob_start();
+            include plugin_dir_path(__FILE__) . 'templates/search-template.php';
+            return ob_get_clean();
         } catch (Exception $e) {
             error_log('Lexhoy Despachos Error: ' . $e->getMessage());
+            return '<p>Error: ' . esc_html($e->getMessage()) . '</p>';
         }
     }
 
@@ -268,7 +393,7 @@ class LexhoyDespachos {
                 'Despachos',
                 'manage_options',
                 'lexhoy-despachos',
-                'lexhoy_despachos_page',
+                array($this, 'despachos_list_page'),
                 'dashicons-building',
                 30
             );
@@ -401,54 +526,6 @@ class LexhoyDespachos {
         }
     }
 
-    public function register_settings() {
-        try {
-            register_setting('lexhoy_despachos_options', 'lexhoy_despachos_settings', array(
-                'sanitize_callback' => array($this, 'sanitize_settings')
-            ));
-        } catch (Exception $e) {
-            error_log('Lexhoy Despachos Error: ' . $e->getMessage());
-        }
-    }
-
-    public function sanitize_settings($input) {
-        $sanitized = array();
-        
-        if (isset($input['algolia_app_id'])) {
-            $sanitized['algolia_app_id'] = sanitize_text_field($input['algolia_app_id']);
-        }
-        
-        if (isset($input['algolia_search_api_key'])) {
-            $sanitized['algolia_search_api_key'] = sanitize_text_field($input['algolia_search_api_key']);
-        }
-
-        if (isset($input['algolia_write_api_key'])) {
-            $sanitized['algolia_write_api_key'] = sanitize_text_field($input['algolia_write_api_key']);
-        }
-
-        if (isset($input['algolia_admin_api_key'])) {
-            $sanitized['algolia_admin_api_key'] = sanitize_text_field($input['algolia_admin_api_key']);
-        }
-
-        if (isset($input['algolia_usage_api_key'])) {
-            $sanitized['algolia_usage_api_key'] = sanitize_text_field($input['algolia_usage_api_key']);
-        }
-
-        if (isset($input['algolia_monitoring_api_key'])) {
-            $sanitized['algolia_monitoring_api_key'] = sanitize_text_field($input['algolia_monitoring_api_key']);
-        }
-
-        // Añadir mensaje de éxito
-        add_settings_error(
-            'lexhoy_despachos_messages',
-            'lexhoy_despachos_message',
-            'Configuración guardada correctamente',
-            'updated'
-        );
-
-        return $sanitized;
-    }
-
     public function enqueue_scripts() {
         // Bootstrap CSS
         wp_enqueue_style(
@@ -520,7 +597,7 @@ class LexhoyDespachos {
         ));
     }
 
-    public function enqueue_admin_scripts() {
+    public function admin_enqueue_scripts() {
         // Solo cargar en las páginas de nuestro plugin
         $screen = get_current_screen();
         if (!$screen || strpos($screen->id, 'lexhoy-despachos') === false) {
@@ -543,19 +620,11 @@ class LexhoyDespachos {
             '6.4.0'
         );
         
-        // Bootstrap JS y Popper.js
-        wp_enqueue_script(
-            'popper',
-            'https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js',
-            array(),
-            '2.11.6',
-            true
-        );
-        
+        // Bootstrap JS Bundle (incluye Popper.js)
         wp_enqueue_script(
             'bootstrap',
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js',
-            array('jquery', 'popper'),
+            'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
+            array('jquery'),
             '5.3.0',
             true
         );
@@ -567,228 +636,6 @@ class LexhoyDespachos {
             array('bootstrap'),
             filemtime(plugin_dir_path(__FILE__) . 'css/lexhoy-despachos.css')
         );
-    }
-
-    public function render_search_form() {
-        try {
-            ob_start();
-            include plugin_dir_path(__FILE__) . 'templates/search-template.php';
-            return ob_get_clean();
-        } catch (Exception $e) {
-            error_log('Lexhoy Despachos Error: ' . $e->getMessage());
-            return '<p>Error: ' . esc_html($e->getMessage()) . '</p>';
-        }
-    }
-
-    public function handle_despacho_update() {
-        try {
-            if (!current_user_can('manage_options')) {
-                wp_send_json_error('No tienes permisos para realizar esta acción.');
-                return;
-            }
-
-            if (!isset($_POST['lexhoy_despachos_nonce']) || !wp_verify_nonce($_POST['lexhoy_despachos_nonce'], 'lexhoy_despachos_edit')) {
-                wp_send_json_error('Verificación de seguridad fallida.');
-                return;
-            }
-
-            $objectID = sanitize_text_field($_POST['objectID']);
-            if (empty($objectID)) {
-                wp_send_json_error('ID de despacho no válido.');
-                return;
-            }
-
-            // Obtener la pestaña actual
-            $current_tab = isset($_POST['current_tab']) ? sanitize_text_field($_POST['current_tab']) : 'info-basica';
-
-            // Obtener los datos de Algolia
-            $settings = get_option('lexhoy_despachos_settings');
-            if (empty($settings['algolia_app_id']) || empty($settings['algolia_admin_api_key'])) {
-                wp_send_json_error('Por favor, configure las credenciales de Algolia en la página de configuración.');
-                return;
-            }
-
-            // Incluir el autoloader de Composer
-            $autoloader = dirname(__FILE__) . '/vendor/autoload.php';
-            if (!file_exists($autoloader)) {
-                wp_send_json_error('Error: No se encontró el autoloader de Composer.');
-                return;
-            }
-            require_once $autoloader;
-
-            $client = \Algolia\AlgoliaSearch\Api\SearchClient::create(
-                $settings['algolia_app_id'],
-                $settings['algolia_admin_api_key']
-            );
-
-            // Obtener el objeto actual primero
-            $despacho_actual = $client->getObject('lexhoy_despachos_formatted', $objectID);
-
-            // Preparar los datos actualizados
-            $despacho_data = array(
-                'objectID' => $objectID,
-                'nombre' => sanitize_text_field($_POST['nombre']),
-                'slug' => !empty($_POST['slug']) ? sanitize_title($_POST['slug']) : sanitize_title($_POST['nombre']),
-                'direccion' => sanitize_text_field($_POST['direccion']),
-                'localidad' => sanitize_text_field($_POST['localidad']),
-                'provincia' => sanitize_text_field($_POST['provincia']),
-                'codigo_postal' => sanitize_text_field($_POST['codigo_postal']),
-                'telefono' => sanitize_text_field($_POST['telefono']),
-                'email' => sanitize_email($_POST['email']),
-                'web' => esc_url_raw($_POST['web']),
-                'areas_practica' => isset($_POST['areas_practica']) ? (array)$_POST['areas_practica'] : [],
-                'especialidades' => array_filter(array_map('trim', explode("\n", sanitize_textarea_field($_POST['especialidades'])))),
-                'horario' => array_map('sanitize_text_field', $_POST['horario']),
-                'redes_sociales' => array_map('esc_url_raw', $_POST['redes_sociales']),
-                'descripcion' => sanitize_textarea_field($_POST['descripcion']),
-                'experiencia' => sanitize_textarea_field($_POST['experiencia']),
-                'tamaño_despacho' => sanitize_text_field($_POST['tamaño_despacho']),
-                'año_fundacion' => intval($_POST['año_fundacion']),
-                'estado_verificacion' => sanitize_text_field($_POST['estado_verificacion']),
-                'estado_registro' => sanitize_text_field($_POST['estado_registro']),
-                'ultima_actualizacion' => date('d-m-Y')
-            );
-
-            // Asegurarse de que todos los campos existentes se mantengan
-            foreach ($despacho_actual as $key => $value) {
-                if (!isset($despacho_data[$key])) {
-                    $despacho_data[$key] = $value;
-                }
-            }
-
-            // Asegurarse de que el slug siempre esté presente
-            if (empty($despacho_data['slug'])) {
-                $despacho_data['slug'] = sanitize_title($despacho_data['nombre']);
-            }
-
-            // Actualizar el objeto en Algolia
-            $client->saveObject('lexhoy_despachos_formatted', $despacho_data);
-
-            // Esperar a que Algolia se actualice
-            sleep(2);
-
-            // Verificar que los datos se actualizaron correctamente
-            $despacho_actualizado = $client->getObject('lexhoy_despachos_formatted', $objectID);
-            if (!$despacho_actualizado) {
-                throw new Exception('Error al verificar la actualización en Algolia');
-            }
-
-            // Redirigir a la página de edición con la pestaña activa
-            wp_redirect(add_query_arg(
-                array(
-                    'page' => 'lexhoy-despachos-edit',
-                    'id' => $objectID,
-                    'tab' => $current_tab,
-                    'updated' => '1'
-                ),
-                admin_url('admin.php')
-            ));
-            exit;
-
-        } catch (Exception $e) {
-            error_log('Lexhoy Despachos Error: ' . $e->getMessage());
-            wp_send_json_error('Error al actualizar el despacho: ' . $e->getMessage());
-        }
-    }
-
-    public function get_despacho($objectID) {
-        try {
-            $client = $this->get_algolia_client();
-            $index = $client->initIndex('lexhoy_despachos_formatted');
-            
-            // Intentar obtener el objeto con reintentos
-            $maxRetries = 3;
-            $retryDelay = 1; // segundos
-            $despacho = null;
-            
-            for ($i = 0; $i < $maxRetries; $i++) {
-                try {
-                    $despacho = $index->getObject($objectID);
-                    if ($despacho) {
-                        break;
-                    }
-                } catch (Exception $e) {
-                    if ($i < $maxRetries - 1) {
-                        sleep($retryDelay);
-                        continue;
-                    }
-                    throw $e;
-                }
-            }
-            
-            if (!$despacho) {
-                throw new Exception('No se pudo obtener el objeto después de varios intentos');
-            }
-            
-            return $despacho;
-        } catch (Exception $e) {
-            error_log('Error al obtener despacho de Algolia: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    public function get_despacho_by_slug($slug) {
-        try {
-            $index = $this->client->initIndex($this->index_name);
-            $response = $index->search('', [
-                'filters' => 'slug:' . $slug,
-                'hitsPerPage' => 1
-            ]);
-
-            if (!empty($response['hits'])) {
-                return $response['hits'][0];
-            }
-
-            return null;
-        } catch (Exception $e) {
-            error_log('Error al buscar despacho por slug: ' . $e->getMessage());
-            return null;
-        }
-    }
-
-    public function register_despacho_post_type() {
-        $labels = array(
-            'name'               => 'Despachos',
-            'singular_name'      => 'Despacho',
-            'menu_name'          => 'Despachos',
-            'add_new'            => 'Añadir Nuevo',
-            'add_new_item'       => 'Añadir Nuevo Despacho',
-            'edit_item'          => 'Editar Despacho',
-            'new_item'           => 'Nuevo Despacho',
-            'view_item'          => 'Ver Despacho',
-            'search_items'       => 'Buscar Despachos',
-            'not_found'          => 'No se encontraron despachos',
-            'not_found_in_trash' => 'No se encontraron despachos en la papelera'
-        );
-
-        $args = array(
-            'labels'              => $labels,
-            'public'              => true,
-            'publicly_queryable'  => true,
-            'show_ui'            => false,
-            'show_in_menu'       => false,
-            'query_var'          => true,
-            'rewrite'            => array(
-                'slug' => '',
-                'with_front' => false
-            ),
-            'capability_type'    => 'post',
-            'has_archive'        => false,
-            'hierarchical'       => false,
-            'menu_position'      => null,
-            'supports'           => array('title', 'editor', 'thumbnail')
-        );
-
-        register_post_type('despacho', $args);
-    }
-
-    public function add_rewrite_rules() {
-        add_rewrite_rule(
-            'despacho/([^/]+)/?$',
-            'index.php?post_type=despacho&despacho_id=$matches[1]',
-            'top'
-        );
-        add_rewrite_tag('%despacho_id%', '([^&]+)');
     }
 
     public function handle_despacho_template($template) {

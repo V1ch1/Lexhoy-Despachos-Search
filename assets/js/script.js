@@ -45,6 +45,13 @@ function initializeSearch() {
         templates: {
           item: `
             <div class="despacho-card hit-card" data-hit='{{{json this}}}'>
+              {{#estado_verificacion}}
+                {{#isVerified}}
+                  <div class="verification-badge">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                {{/isVerified}}
+              {{/estado_verificacion}}
               <div class="despacho-name">{{nombre}}</div>
               <div class="despacho-location">{{localidad}}, {{provincia}}</div>
               <div class="despacho-areas">{{areas_practica}}</div>

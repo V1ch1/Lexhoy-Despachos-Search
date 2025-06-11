@@ -181,4 +181,18 @@ try {
 .ais-SearchBox-reset {
     display: none !important;
 }
-</style> 
+</style>
+
+<div class="tabs-navigation">
+    <button class="tab-button active" data-tab="info-basica">
+        <i class="fas fa-info-circle"></i> Información Básica
+    </button>
+    <!-- otros botones -->
+</div>
+
+<div class="tabs-content">
+    <div class="tab-panel active" id="info-basica">
+        <!-- contenido -->
+    </div>
+    <!-- otros paneles -->
+</div> 
